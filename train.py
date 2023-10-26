@@ -81,7 +81,15 @@ def main():
     train_dataset = ClinicalDataset(train_json_path)
     dev_dataset = ClinicalDataset(dev_json_path)
     print(f'Loaded {len(train_dataset)} training examples.')
-    print(f'Loaded {len(dev_dataset)} dev examples.\n\n\n')
+    print(f'{train_dataset.single_entailment} {train_dataset.comparison_entailment} {train_dataset.single_contradiction} {train_dataset.comparison_contradiction}')
+    print(f'Loaded {len(dev_dataset)} dev examples.')
+    print(f'{dev_dataset.single_entailment} {dev_dataset.comparison_entailment} {dev_dataset.single_contradiction} {dev_dataset.comparison_contradiction}')
+    
+    ### BE SURE TO SHUFFLE DATA ###
+    #shuffle(train_dataset, seed=42)
+    #shuffle(dev_dataset, seed=42)
+    
+    exit()
     
     # epoch loop
     for e in range(epochs):

@@ -38,9 +38,10 @@ class DataItem():
 class ClinicalDataset(Dataset):
     def __init__(self, file_path):
         
-        self.examples = []
-        self.num_single = 0
-        self.num_comparison = 0
+        self.single_entailment = []
+        self.comparison_entailment = []
+        self.single_contradiction = []
+        self.comparison_contradiction = []
         
         # training/dev examples
         jsons = json.load(open(file_path, 'r', encoding='utf-8'))
@@ -57,13 +58,10 @@ class ClinicalDataset(Dataset):
             
             # if there is a comparison, retrieve that as well
             if j['Type'] == 'Comparison':
-                self.num_comparison += 1
                 ct_data_2 = cts[j['Secondary_id']][j['Section_id']]
                 ct_data_2_keep = [ct_data_2[x] for x in j['Secondary_evidence_index']]
                 
                 return [ct_data_1_keep, ct_data_2_keep]
-            else:
-                self.num_single += 1
             
             return [ct_data_1_keep]
         
@@ -71,7 +69,18 @@ class ClinicalDataset(Dataset):
         for uuid in jsons:
             j = jsons[uuid]
             text_array = pull_from_ct_json(j)
-            self.examples.append(DataItem(uuid, j, text_array))
+            if len(text_array) == 2: # comparisons
+                if j['Label'] == 'Entailment':
+                    self.comparison_entailment.append(DataItem(uuid, j, text_array))
+                else:
+                    self.comparison_contradiction.append(DataItem(uuid, j, text_array))
+            else: # singles
+                if j['Label'] == 'Entailment':
+                    self.single_entailment.append(DataItem(uuid, j, text_array))
+                else:
+                    self.single_contradiction.append(DataItem(uuid, j, text_array))
+                    
+        self.examples = self.single_contradiction + self.single_entailment + self.comparison_contradiction + self.comparison_entailment
         
     def __len__(self):
         return len(self.examples)
