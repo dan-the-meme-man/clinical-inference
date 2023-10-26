@@ -4,7 +4,10 @@ import openai
 from retrieve_data import get_data
 
 # Set your OpenAI API key
-openai.api_key = open('key.txt', 'r').read().strip()
+try:
+    openai.api_key = open('key.txt', 'r').read().strip()
+except:
+    raise ValueError('You must provide a valid OpenAI API key in a file called key.txt in the top level directory.')
 
 # Define the prompt you want to send to the model
 def main():
