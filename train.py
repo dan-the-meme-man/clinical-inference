@@ -1,6 +1,6 @@
 import os
 import torch
-from retrieve_data import *
+from retrieve_data import get_data
 from NN_NLI import *
 
 def train_batch(model, batch, optimizer, criterion):
@@ -75,11 +75,8 @@ def main():
     print(f'Optimizer: {optimizer}\n\n\n')
    
     # retrieve data
-    training_data_path = os.path.join('Task-2-SemEval-2024', 'training_data', 'training_data')
-    train_json_path = os.path.join(training_data_path, 'train.json')
-    dev_json_path = os.path.join(training_data_path, 'dev.json')
-    train_dataset = ClinicalDataset(train_json_path)
-    dev_dataset = ClinicalDataset(dev_json_path)
+    train_dataset = get_data('train')
+    dev_dataset = get_data('dev')
     
     train_info = f'Loaded {len(train_dataset)} training examples.'
     train_info += f'\n{len(train_dataset.single_entailment)} single entailments.'

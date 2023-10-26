@@ -2,6 +2,8 @@ import os
 import json
 from torch.utils.data import Dataset
 
+jsons_path = os.path.join('Task-2-SemEval-2024', 'training_data', 'training_data')
+
 """A single item of data in a convenient format.
     
     Attributes:
@@ -23,6 +25,12 @@ class DataItem():
         self.is_comparison = True if len(text_array) == 2 else False
         self.statement = j['Statement']
         self.label = 1 if j['Label'] == 'Contradiction' else 0
+        
+    def concat_rep(self):
+        if self.is_comparison:
+            return ''.join(self.context[0]) + ''.join(self.context[1]) + self.statement
+        else:
+            return ''.join(self.context[0]) + self.statement
 
 """A PyTorch Dataset for the clinical trial data.
 
@@ -37,6 +45,9 @@ class DataItem():
 """
 class ClinicalDataset(Dataset):
     def __init__(self, file_path):
+        
+        self.trial_sep = '<trial_sep>'
+        self.sent_sep = '<sent_sep>'
         
         self.single_entailment = []
         self.comparison_entailment = []
@@ -86,6 +97,16 @@ class ClinicalDataset(Dataset):
         return len(self.examples)
     def __getitem__(self, idx):
         return self.examples[idx]
+    
+def get_data(s='train'):
+    if s == 'train':
+        return ClinicalDataset(os.path.join(jsons_path, 'train.json'))
+    elif s == 'dev':
+        return ClinicalDataset(os.path.join(jsons_path, 'dev.json'))
+    elif s == 'test':
+        return ClinicalDataset(os.path.join(jsons_path, 'test.json'))
+    else:
+        raise ValueError('Must be one of "train", "dev", or "test".')
 
 if __name__ == '__main__':    
     if not os.path.exists('CT_dict.json'):
