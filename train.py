@@ -80,10 +80,20 @@ def main():
     dev_json_path = os.path.join(training_data_path, 'dev.json')
     train_dataset = ClinicalDataset(train_json_path)
     dev_dataset = ClinicalDataset(dev_json_path)
-    print(f'Loaded {len(train_dataset)} training examples.')
-    print(f'{train_dataset.single_entailment} {train_dataset.comparison_entailment} {train_dataset.single_contradiction} {train_dataset.comparison_contradiction}')
-    print(f'Loaded {len(dev_dataset)} dev examples.')
-    print(f'{dev_dataset.single_entailment} {dev_dataset.comparison_entailment} {dev_dataset.single_contradiction} {dev_dataset.comparison_contradiction}')
+    
+    train_info = f'Loaded {len(train_dataset)} training examples.'
+    train_info += f'\n{len(train_dataset.single_entailment)} single entailments.'
+    train_info += f' {len(train_dataset.comparison_entailment)} comparison entailments.'
+    train_info += f' {len(train_dataset.single_contradiction)} single contradictions.'
+    train_info += f' {len(train_dataset.comparison_contradiction)} comparison contradictions.\n\n\n'
+    print(train_info)
+    
+    dev_info = f'Loaded {len(dev_dataset)} dev examples.'
+    dev_info += f'\n{len(dev_dataset.single_entailment)} single entailments.'
+    dev_info += f' {len(dev_dataset.comparison_entailment)} comparison entailments.'
+    dev_info += f' {len(dev_dataset.single_contradiction)} single contradictions.'
+    dev_info += f' {len(dev_dataset.comparison_contradiction)} comparison contradictions.\n\n\n'
+    print(dev_info)
     
     ### BE SURE TO SHUFFLE DATA ###
     #shuffle(train_dataset, seed=42)
