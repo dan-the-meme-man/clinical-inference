@@ -1,3 +1,4 @@
+import os
 import time
 import openai
 
@@ -9,13 +10,14 @@ try:
 except:
     raise ValueError('You must provide a valid OpenAI API key in a file called key.txt in the top level directory.')
 
-# Define the prompt you want to send to the model
 def main():
+    
+    # pull dev set
     dev_data = get_data('dev')
 
+    # build prompts and store labels as well
     prompts = []
     labels = []
-
     for i in range(len(dev_data)):
 
         prompt = "Given the following information: \n\n"
@@ -40,22 +42,24 @@ def main():
         else:
             raise ValueError('Label must be 0 or 1.')
 
+    # Split results into true positive, false positive, true negative, and false negative
     tp = []
     fp = []
     tn = []
     fn = []
 
-    # Call the OpenAI API to generate a response
+    # Call the OpenAI API to generate a response for each prompt
     for i in range(len(prompts)):
         response = openai.Completion.create(
             engine="text-davinci-002",  # Use the GPT-3.5 model
             prompt=prompt,
-            max_tokens=50  # You can adjust this value as needed
+            max_tokens=50  # Limit the total tokens generated to 50
         )
 
-        # Extract and print the generated text from the response
+        # Extract the generated text from the response
         generated_text = response.choices[0].text
         
+        # decide TP, FP, TN, or FN
         if 'entailment' in generated_text.lower():
             if labels[i] == 'entailment':
                 tp.append(generated_text)
@@ -66,16 +70,22 @@ def main():
                 tn.append(generated_text)
             else:
                 fn.append(generated_text)
-                
+        
+        # avoid being denied due to rate limiting, may need to adjust
         time.sleep(3)
-                
-    print(f'TP: {tp}, FP: {fp}, TN: {tn}, FN: {fn}')
-
+        
+    # calculate metrics
     prec = tp / (tp + fp)
     rec = tp / (tp + fn)
     f1 = 2 * (prec * rec) / (prec + rec)
-
-    print(f'Precision: {prec}, Recall: {rec}, F1: {f1}')
+    
+    # report stats
+    results_dir = 'results'
+    if not os.path.exists(results_dir):
+        os.mkdir(results_dir)
+    with open(os.path.join(results_dir, 'ask_gpt.txt'), 'w+') as f:
+        f.write(f'TP: {tp}, FP: {fp}, TN: {tn}, FN: {fn}\n\n')
+        f.write(f'Precision: {prec}, Recall: {rec}, F1: {f1}')
 
 if __name__ == '__main__':
     main()
