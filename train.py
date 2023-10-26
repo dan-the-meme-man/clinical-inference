@@ -75,7 +75,7 @@ def main():
     print(f'Optimizer: {optimizer}\n\n\n')
    
     # retrieve data
-    training_data_path = os.path.join('Task-2-SemEval-2024-main', 'training_data', 'training_data')
+    training_data_path = os.path.join('Task-2-SemEval-2024', 'training_data', 'training_data')
     train_json_path = os.path.join(training_data_path, 'train.json')
     dev_json_path = os.path.join(training_data_path, 'dev.json')
     train_dataset = ClinicalDataset(train_json_path)

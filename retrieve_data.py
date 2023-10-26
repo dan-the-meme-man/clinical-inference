@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
             This is organized as a list of length 1 (2 if comparison)
             whose entry is a list of relevant text from the primary
             clinical trial.
+        is_comparison (bool): True if the data item is a comparison.
         statement (str): The statement from the JSON object.
         label (int): 0 for contradiction, 1 for entailment.
 """
@@ -19,13 +20,16 @@ class DataItem():
         self.uuid = uuid
         self.json = j
         self.context = text_array
+        self.is_comparison = True if len(text_array) == 2 else False
         self.statement = j['Statement']
-        self.label = 0 if j['Label'] == 'Contradiction' else 1
+        self.label = 1 if j['Label'] == 'Contradiction' else 0
 
 """A PyTorch Dataset for the clinical trial data.
 
     Attributes:
         examples (list): A list of DataItems.
+        num_single (int): The number of single examples.
+        num_comparison (int): The number of comparison examples.
         
     Functions:
         __len__(): Returns the number of examples.
@@ -35,12 +39,14 @@ class ClinicalDataset(Dataset):
     def __init__(self, file_path):
         
         self.examples = []
+        self.num_single = 0
+        self.num_comparison = 0
         
         # training/dev examples
         jsons = json.load(open(file_path, 'r', encoding='utf-8'))
         
         # clinical trial data to pull from
-        cts = json.load(open(os.path.join('data', 'CT_dict.json'), 'r', encoding='utf-8'))
+        cts = json.load(open('CT_dict.json', 'r', encoding='utf-8'))
         
         # make an array of all relevant text from clinical trials
         def pull_from_ct_json(j):
@@ -51,10 +57,13 @@ class ClinicalDataset(Dataset):
             
             # if there is a comparison, retrieve that as well
             if j['Type'] == 'Comparison':
+                self.num_comparison += 1
                 ct_data_2 = cts[j['Secondary_id']][j['Section_id']]
                 ct_data_2_keep = [ct_data_2[x] for x in j['Secondary_evidence_index']]
                 
                 return [ct_data_1_keep, ct_data_2_keep]
+            else:
+                self.num_single += 1
             
             return [ct_data_1_keep]
         
@@ -70,7 +79,7 @@ class ClinicalDataset(Dataset):
         return self.examples[idx]
 
 if __name__ == '__main__':    
-    if not os.path.exists(os.path.join('data', 'CT_dict.json')):
+    if not os.path.exists('CT_dict.json'):
         raise FileNotFoundError('CT_dict.json not found. Run serialize_cts.py first.')
     else:
         print('CT_dict.json found. You may safely run train.py.')
