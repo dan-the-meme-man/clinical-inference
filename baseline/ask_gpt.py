@@ -2,13 +2,13 @@ import os
 import time
 import openai
 
-from retrieve_data import get_data
+from data.retrieve_data import get_data
 
 # Set your OpenAI API key
 try:
     openai.api_key = open('key.txt', 'r').read().strip()
 except:
-    raise ValueError('You must provide a valid OpenAI API key in a file called key.txt in the top level directory.')
+    raise ValueError('You must provide a valid OpenAI API key in a file called key.txt in the baseline directory.')
 
 def main():
     
@@ -21,11 +21,8 @@ def main():
     for i in range(len(dev_data)):
 
         prompt = "Given the following information: \n\n"
-
-        for j in range(len(dev_data[i].context)):
-            texts = [dev_data[i].context[j][k] for k in range(len(dev_data[i].context[j]))]
-            for text in texts:
-                prompt += text + '\n'
+        
+        prompt += dev_data[i].concat_context()
                 
         prompt += '\n\nDecide whether the following statement is an entailment or a contradiction: '
         
@@ -41,6 +38,9 @@ def main():
             labels.append('contradiction')
         else:
             raise ValueError('Label must be 0 or 1.')
+        
+        print(prompt)
+        exit()
 
     # Split results into true positive, false positive, true negative, and false negative
     tp = []
@@ -78,14 +78,12 @@ def main():
     prec = tp / (tp + fp)
     rec = tp / (tp + fn)
     f1 = 2 * (prec * rec) / (prec + rec)
+    acc = tp + tn / (tp + tn + fp + fn)
     
     # report stats
-    results_dir = 'results'
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
-    with open(os.path.join(results_dir, 'ask_gpt.txt'), 'w+') as f:
+    with open('ask_gpt.txt', 'w+') as f:
         f.write(f'TP: {tp}, FP: {fp}, TN: {tn}, FN: {fn}\n\n')
-        f.write(f'Precision: {prec}, Recall: {rec}, F1: {f1}')
+        f.write(f'Precision: {prec}, Recall: {rec}, F1: {f1}, Acc: {acc}')
 
 if __name__ == '__main__':
     main()

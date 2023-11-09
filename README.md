@@ -19,12 +19,30 @@ If you are a Linux user, you should have the ```unzip``` util installed. If you 
 have the Windows tool Expand-Archive instead, which is recognized by Powershell. The Python script ```fetch_task.py``` will clone the repository and unzip the data files for you. You should then run ```serialize_cts.py``` to create the serialized data files:
 
 ```bash
-python fetch_task.py
-python serialize_cts.py
+python data/fetch_task.py
+python data/serialize_cts.py
 ```
 
 Before proceeding, ensure you have the relevant libraries installed:
   
-  ```bash
-  pip install -r requirements.txt
-  ```
+```bash
+pip install -r requirements.txt
+```
+
+You can optionally run ```retrieve_data.py``` to ensure the serialization has gone as expected:
+
+```bash
+python data/retrieve_data.py
+```
+
+You can then optionally run the ChatGPT baseline:
+
+```bash
+python ask_gpt.py
+```
+
+Finally, you can train our best model from scratch if you wish:
+
+```bash
+python train.py
+```

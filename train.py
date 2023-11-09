@@ -1,31 +1,34 @@
 import os
+from random import shuffle
 import torch
-from retrieve_data import get_data
-from NN_NLI import *
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
+
+from vocab.control_symbols import control_symbols
+from data.retrieve_data import get_data
+from torch_nn import *
+
+# manage device
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train_batch(model, batch, optimizer, criterion):
 
-        inputs = []
+        # TODO: tokenize input using spm.SentencePieceProcessor()
+        # TODO: pad input to max length
+        # TODO: cast ID list to torch tensor
+        # TODO: cast label to torch tensor
+        # TODO: send to device
         
-        for data_item in batch:
-            pass
+        model.zero_grad() # zero the gradients
         
-        # zero the gradients
-        model.zero_grad()
+        output = model(batch) # forward pass
         
-        # forward pass
-        output = model(batch)
+        loss = criterion(output, batch['label']) # compute loss
         
-        # compute loss
-        loss = criterion(output, batch['label'])
+        loss.backward() # backward pass
         
-        # backward pass
-        loss.backward()
+        optimizer.step() # update parameters
         
-        # update parameters
-        optimizer.step()
-        
-        return loss.item()
+        return loss.item() # return loss
 
 def main():
     
@@ -33,6 +36,7 @@ def main():
     
     ### TRAINING HYPERPARAMETERS ###
     lr = 1e-3
+    weight_decay = 1e-3
     batch_size = 32
     epochs = 10
     
@@ -48,17 +52,14 @@ def main():
         'dropout': 0.1,
         'n_layers': 6
     }
+    model = TransformerNLI(specs=specs)
+    print(f'Model: {model}\n\n\n')
     
     ### LEAVE ALONE? ###
     criterion = torch.nn.BCEWithLogitsLoss()
     betas = (0.9, 0.999)
     eps = 1e-8
-    weight_decay = 1e-3
     amsgrad = False
-    
-    # make model
-    model = TransformerNLI(specs=specs)
-    print(f'Model: {model}\n\n\n')
     
     # manage device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -77,37 +78,40 @@ def main():
     # retrieve data
     train_dataset = get_data('train')
     dev_dataset = get_data('dev')
-    
-    train_info = f'Loaded {len(train_dataset)} training examples.'
-    train_info += f'\n{len(train_dataset.single_entailment)} single entailments.'
-    train_info += f' {len(train_dataset.comparison_entailment)} comparison entailments.'
-    train_info += f' {len(train_dataset.single_contradiction)} single contradictions.'
-    train_info += f' {len(train_dataset.comparison_contradiction)} comparison contradictions.\n\n\n'
-    print(train_info)
-    
-    dev_info = f'Loaded {len(dev_dataset)} dev examples.'
-    dev_info += f'\n{len(dev_dataset.single_entailment)} single entailments.'
-    dev_info += f' {len(dev_dataset.comparison_entailment)} comparison entailments.'
-    dev_info += f' {len(dev_dataset.single_contradiction)} single contradictions.'
-    dev_info += f' {len(dev_dataset.comparison_contradiction)} comparison contradictions.\n\n\n'
-    print(dev_info)
-    
-    ### BE SURE TO SHUFFLE DATA ###
-    #shuffle(train_dataset, seed=42)
-    #shuffle(dev_dataset, seed=42)
-    
-    exit()
+
+    # ensure correct counts: 1700 train, 200 dev
+    print(f'Loaded {len(train_dataset)} training examples.')
+    print(f'Loaded {len(dev_dataset)} dev examples.')
     
     # epoch loop
     for e in range(epochs):
-        print(f'Epoch {e+1}/{epochs}.')
+        
+        # shuffle data
+        shuffle(train_dataset, seed=42)
+        shuffle(dev_dataset, seed=42)
+        
+        num_batches = len(train_dataset) // batch_size
+        
+        losses = []
+        
+        print(f'Begin epoch {e+1}/{epochs}.\n\n\n')
         
         # train
         model.train()
-        for i in range(len(train_dataset)):
+        
+        # loop over batches
+        for i in range(num_batches):
             
-            print(batch)
-            exit()
+            batch = []
+            
+            for j in range(batch_size):
+                try:
+                    batch.append(train_dataset[i * batch_size + j])
+                except:
+                    break
+            
+            # train the model on the batch, record the loss
+            losses.append(train_batch(model, batch, optimizer, criterion))
     
 if __name__ == '__main__':
     main()
