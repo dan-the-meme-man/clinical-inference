@@ -4,7 +4,7 @@ import json
 def main():
     
     # path to clinical trials jsons
-    CT_dir = os.path.join('..', 'Task-2-SemEval-2024', 'training_data', 'training_data', 'CT json')
+    CT_dir = os.path.join('Task-2-SemEval-2024', 'training_data', 'training_data', 'CT json')
     
     if not os.path.exists(CT_dir):
         raise Exception('Cloned repo not found. Please run fetch_task.py first.')

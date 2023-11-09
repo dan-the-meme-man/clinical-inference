@@ -1,34 +1,53 @@
-import os
 from random import shuffle
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
+import sentencepiece as spm
 
-from vocab.control_symbols import control_symbols
-from data.retrieve_data import get_data
+from control_symbols import control_symbols
+from retrieve_data import get_data
 from torch_nn import *
 
 # manage device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f'Using device: {device}.\n\n\n')
+
+# load vocab and tokenizer
+sp = spm.SentencePieceProcessor()
+sp.Load(os.path.join('vocab', 'spm.model'))
+print(f'Loaded SentencePiece model from {os.path.join("vocab", "spm.model")}.\n\n\n')
 
 def train_batch(model, batch, optimizer, criterion):
+    
+    id_list = []
+    label_list = []
+    max_len = 0
+    
+    for item in batch:
+        id_list.append(sp.EncodeAsIds(item[0]))
+        label_list.append(item[1])
+        if len(id_list[-1]) > max_len:
+            max_len = len(id_list[-1])
+    
+    # TODO: pad input to max length - it is not just 0 - there is a pad ID
+    for i in range(len(id_list)):
+        id_list[i] += [0] * (max_len - len(id_list[i]))
 
-        # TODO: tokenize input using spm.SentencePieceProcessor()
-        # TODO: pad input to max length
-        # TODO: cast ID list to torch tensor
-        # TODO: cast label to torch tensor
-        # TODO: send to device
-        
-        model.zero_grad() # zero the gradients
-        
-        output = model(batch) # forward pass
-        
-        loss = criterion(output, batch['label']) # compute loss
-        
-        loss.backward() # backward pass
-        
-        optimizer.step() # update parameters
-        
-        return loss.item() # return loss
+    # TODO: tokenize input using spm.SentencePieceProcessor()
+    
+    # TODO: cast ID list to torch tensor
+    # TODO: cast label to torch tensor
+    # TODO: send to device
+    
+    model.zero_grad() # zero the gradients
+    
+    output = model(batch) # forward pass
+    
+    loss = criterion(output, batch['label']) # compute loss
+    
+    loss.backward() # backward pass
+    
+    optimizer.step() # update parameters
+    
+    return loss.item() # return loss
 
 def main():
     

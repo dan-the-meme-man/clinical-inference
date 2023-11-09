@@ -4,10 +4,10 @@ from random import shuffle
 from torch.utils.data import Dataset
 
 # control symbols which are used in several scripts
-from vocab.control_symbols import control_symbols
+from control_symbols import control_symbols
 
 # path to the training data
-jsons_path = os.path.join('..', 'Task-2-SemEval-2024', 'training_data', 'training_data')
+jsons_path = os.path.join('Task-2-SemEval-2024', 'training_data', 'training_data')
 
 """A single item of data in a convenient format.
     
@@ -67,15 +67,21 @@ class DataItem():
 class ClinicalDataset(Dataset):
     def __init__(self,
                  file_path,
+                 use_control    = True,
                  flatten        = True,
                  shuf           = False,
                  mix            = False,
                  use_indices    = False):
         
         # define some control symbols
-        self.trial_sep = control_symbols['trial_sep'] # ignored if mix is True
-        self.sent_sep = control_symbols['sent_sep']
-        self.statement_sep = control_symbols['statement_sep']
+        if use_control:
+            self.trial_sep = control_symbols['trial_sep'] # ignored if mix is True
+            self.sent_sep = control_symbols['sent_sep']
+            self.statement_sep = control_symbols['statement_sep']
+        else:
+            self.trial_sep = ''
+            self.sent_sep = ''
+            self.statement_sep = ''
         
         # settings about data representation
         self.flatten = flatten # replace all whitespace with a single space
@@ -203,14 +209,24 @@ class ClinicalDataset(Dataset):
         ValueError: If s is not 'train', 'dev', or 'test'.
 
 """
-def get_data(s='train'):
-    if s == 'train':
-        return ClinicalDataset(os.path.join(jsons_path, 'train.json'))
-    elif s == 'dev':
-        return ClinicalDataset(os.path.join(jsons_path, 'dev.json'))
-    elif s == 'test':
-        return ClinicalDataset(os.path.join(jsons_path, 'test.json'))
-    else:
+def get_data(
+    s='train',
+    use_control    = True,
+    flatten        = True,
+    shuf           = False,
+    mix            = False,
+    use_indices    = False
+    ):
+    try:
+        return ClinicalDataset(
+            os.path.join(jsons_path, s + '.json'),
+            use_control    = use_control,
+            flatten        = flatten,
+            shuf           = shuf,
+            mix            = mix,
+            use_indices    = use_indices
+        )
+    except:
         raise ValueError('Must be one of "train", "dev", or "test".')
 
 """The main script can be run to ensure data wrangling has been done.

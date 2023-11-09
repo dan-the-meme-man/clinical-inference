@@ -35,14 +35,15 @@ You can optionally run ```retrieve_data.py``` to ensure the serialization has go
 python data/retrieve_data.py
 ```
 
-You can then optionally run the ChatGPT baseline:
+You can then optionally run the ChatGPT baseline. Ensure you have a valid API key saved to a file
+called "key.txt" in the baseline directory. Then run:
 
 ```bash
-python ask_gpt.py
+python baseline/ask_gpt.py
 ```
 
 Finally, you can train our best model from scratch if you wish:
 
 ```bash
-python train.py
+python nn/train.py
 ```

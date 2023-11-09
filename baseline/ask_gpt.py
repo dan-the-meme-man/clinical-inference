@@ -1,8 +1,7 @@
-import os
 import time
 import openai
 
-from data.retrieve_data import get_data
+from retrieve_data import get_data
 
 # Set your OpenAI API key
 try:
