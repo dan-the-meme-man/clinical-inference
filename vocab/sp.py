@@ -1,17 +1,19 @@
+import os
 import sentencepiece as spm
 
 from control_symbols import control_symbols
 
-train_texts = 'vocab.txt' # can use ',' separated list
+train_texts = ['vocab.txt'] # can use ',' separated list
+train_texts = [os.path.join('vocab', t) for t in train_texts]
 
 # for a complete list of options see: https://github.com/google/sentencepiece/blob/master/doc/options.md
 # be sure to include ' ' at between parameters
 
 params = ''
-params += ' --input=vocab.txt' # only required parameters
-params += ' --model_prefix=spm' # specify an output name
+params += ' --input=' + ','.join(train_texts) # only required parameters
+params += ' --model_prefix=' + os.path.join('vocab', 'spm') # specify an output name
 
-params +=  ' --vocab_size=8000' # default: 8000
+params +=  ' --vocab_size=9200' # default: 8000
 
 params += ' --character_coverage=1.0' # default: 0.9995
 
@@ -31,7 +33,7 @@ if train:
 
 # load and test vocab    
 sp = spm.SentencePieceProcessor()
-sp.Load('spm.model')
+sp.Load(os.path.join('vocab', 'spm.model'))
 
 print(sp.__dict__)
 print(sp.this)

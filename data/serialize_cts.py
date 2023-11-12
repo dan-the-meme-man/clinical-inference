@@ -4,7 +4,7 @@ import json
 def main():
     
     # path to clinical trials jsons
-    CT_dir = os.path.join('Task-2-SemEval-2024', 'training_data', 'training_data', 'CT json')
+    CT_dir = os.path.join('Task-2-SemEval-2024', 'training_data', 'CT json')
     
     if not os.path.exists(CT_dir):
         raise Exception('Cloned repo not found. Please run fetch_task.py first.')
@@ -25,7 +25,7 @@ def main():
     CT_dict = dict(zip(keys, CT_jsons))
     
     # dump dict to json file
-    CT_dict_file = 'CT_dict.json'
+    CT_dict_file = os.path.join('data', 'CT_dict.json')
     json.dump(CT_dict, open(CT_dict_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     
     # load dumped jsons and ensure they have been serialized properly

@@ -1,8 +1,11 @@
+import sys
+sys.path.append('.')
+
 from random import shuffle
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
 
-from retrieve_data import get_data
+from data.retrieve_data import get_data
 
 # manage model
 model_name = 'allenai/scibert_scivocab_uncased'

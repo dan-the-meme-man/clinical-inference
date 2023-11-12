@@ -1,13 +1,17 @@
+import sys
+sys.path.append('.')
+
 import os
 import json
 from random import shuffle
 from torch.utils.data import Dataset
 
 # control symbols which are used in several scripts
-from control_symbols import control_symbols
+from vocab.control_symbols import control_symbols
 
-# path to the training data
-jsons_path = os.path.join('Task-2-SemEval-2024', 'training_data', 'training_data')
+# paths to the training data
+jsons_path = os.path.join('Task-2-SemEval-2024', 'training_data')
+CT_path = os.path.join('data', 'CT_dict.json')
 
 """A single item of data in a convenient format.
     
@@ -75,20 +79,24 @@ class ClinicalDataset(Dataset):
         
         # define some control symbols
         if use_control:
+            self.cls = control_symbols['cls']
             self.trial_sep = control_symbols['trial_sep'] # ignored if mix is True
             self.sent_sep = control_symbols['sent_sep']
             self.statement_sep = control_symbols['statement_sep']
+            self.end = control_symbols['end']
         else:
+            self.cls = ''
             self.trial_sep = ''
             self.sent_sep = ''
             self.statement_sep = ''
+            self.end = ''
         
         # settings about data representation
         self.flatten = flatten # replace all whitespace with a single space
         self.shuf = shuf # shuffle the item-internal texts
         self.mix = mix # mix CTRs together in comparison examples, ignored if not shuf
         
-        if self.mix: self.trial_sep = ''
+        if self.mix: self.trial_sep = '' # ignore trial_sep if mixing, doesn't make sense
         
         # partition data, may be useful
         self.single_entailment = []
@@ -100,7 +108,7 @@ class ClinicalDataset(Dataset):
         jsons = json.load(open(file_path, 'r', encoding='utf-8'))
         
         # fetch clinical trial data to pull from
-        cts = json.load(open('CT_dict.json', 'r', encoding='utf-8'))
+        cts = json.load(open(CT_path, 'r', encoding='utf-8'))
         
         """Retrieves the relevant clinical trial data from the CT_dict.json file.
         
@@ -153,6 +161,12 @@ class ClinicalDataset(Dataset):
         self.examples = self.single_contradiction + self.single_entailment + self.comparison_contradiction + self.comparison_entailment
         
         ### TODO: SHUFFLE WITH SEED IFF THIS OBJECT CANNOT BE SHUFFLED WITH shuffle()
+        
+    def shuffle(self, seed=None):
+        if seed is not None:
+            shuffle(self.examples, lambda: seed)
+        else:
+            shuffle(self.examples)
 
     def __getitem__(self, idx):
         
@@ -163,26 +177,26 @@ class ClinicalDataset(Dataset):
             if self.shuf: # shuffle text
                 if self.mix: # shuffle the CTRs together
                     text = text0 + text1
-                    shuffle(text, seed=42)
+                    shuffle(text)
                 else: # shuffle separately and then concatenate
-                    shuffle(text0, seed=42)
-                    shuffle(text1, seed=42)
+                    shuffle(text0)
+                    shuffle(text1)
             
             # make string representations of the text
             sep = '\n' + self.sent_sep + '\n'
-            s = sep.join(text0)
+            s = self.cls + '\n' + sep.join(text0)
             s += '\n' + self.trial_sep + '\n'
             s += sep.join(text1)
-            s += '\n' + self.statement_sep + '\n'
+            s += '\n' + self.statement_sep + '\n' + item.statement + '\n' + self.end + '\n'
             
         else:
             text0 = item.context[0]
             if self.shuf:
-                shuffle(text0, seed=42)
+                shuffle(text0)
                 
             sep = '\n' + self.sent_sep + '\n'
-            s = sep.join(text0)
-            s += '\n' + self.statement_sep + '\n'
+            s = self.cls + '\n' + sep.join(text0)
+            s += '\n' + self.statement_sep + '\n' + item.statement + '\n' + self.end + '\n'
                 
         if self.flatten:
             s = s.replace('\n', ' ')
@@ -192,7 +206,7 @@ class ClinicalDataset(Dataset):
         
         s = s.strip()
         
-        return s, item.label
+        return s, item.label, item
     
     def __len__(self):
         return len(self.examples)
@@ -234,8 +248,12 @@ def get_data(
 Raises:
     FileNotFoundError: Throws this error if the data wrangling has not been done properly.
 """
-if __name__ == '__main__':    
-    if not os.path.exists('CT_dict.json'):
+if __name__ == '__main__':
+    if not os.path.exists(jsons_path):
+        raise FileNotFoundError('training_data folder not found. Run fetch_task.py first.')
+    else:
+        print('training_data folder found.')
+    if not os.path.exists(CT_path):
         raise FileNotFoundError('CT_dict.json not found. Run serialize_cts.py first.')
     else:
         print('CT_dict.json found. You may safely run train.py.')

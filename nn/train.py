@@ -1,9 +1,12 @@
+import sys
+sys.path.append('.')
+
 from random import shuffle
 import torch
 import sentencepiece as spm
 
-from control_symbols import control_symbols
-from retrieve_data import get_data
+from vocab.control_symbols import control_symbols
+from data.retrieve_data import get_data
 from torch_nn import *
 
 # manage device

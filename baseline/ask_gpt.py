@@ -1,18 +1,25 @@
+import sys
+sys.path.append('.')
+
+import os
 import time
 import openai
 
-from retrieve_data import get_data
+from data.retrieve_data import get_data
 
 # Set your OpenAI API key
 try:
-    openai.api_key = open('key.txt', 'r').read().strip()
+    openai.api_key = open(os.path.join('baseline', 'key.txt'), 'r').read().strip()
 except:
     raise ValueError('You must provide a valid OpenAI API key in a file called key.txt in the baseline directory.')
 
 def main():
     
     # pull dev set
-    dev_data = get_data('dev')
+    try:
+        dev_data = get_data('dev')
+    except:
+        raise ValueError('Could not load dev set - ensure you have run fetch_task.py and serialize_cts.py.')
 
     # build prompts and store labels as well
     prompts = []
