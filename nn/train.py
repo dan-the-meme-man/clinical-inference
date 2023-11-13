@@ -79,8 +79,8 @@ def main():
     ### TRAINING HYPERPARAMETERS ###
     lr = 1e-3
     weight_decay = 1e-4
-    batch_size = 16
-    epochs = 1
+    batch_size = 1
+    epochs = 10
     
     ### MODEL HYPERPARAMETERS ###
     specs = {
@@ -91,7 +91,7 @@ def main():
         'embed_dim': 256,
         'dropout': 0.1,
         'activation': 'relu',
-        'max_length': 3000
+        'max_length': 2400
     }
     
     ### LEAVE ALONE? ###
@@ -126,7 +126,7 @@ def main():
     train_dataset = get_data(
         'train',
         use_control=False,
-        flatten=False,
+        flatten=True,
         shuf=False,
         mix=False,
         use_indices=False
@@ -134,7 +134,7 @@ def main():
     dev_dataset = get_data(
         'dev',
         use_control=False,
-        flatten=False,
+        flatten=True,
         shuf=False,
         mix=False,
         use_indices=False
