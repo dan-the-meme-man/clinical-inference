@@ -4,6 +4,7 @@ sys.path.append('.')
 import os
 import json
 from random import shuffle
+
 from torch.utils.data import Dataset
 
 # control symbols which are used in several scripts
@@ -116,7 +117,8 @@ class ClinicalDataset(Dataset):
                 j (dict): The JSON object from train.json or dev.json.
                 
             Returns:
-                list: A list of the relevant clinical trial data. The list contains either one or two lists of strings.
+                list: A list of the relevant clinical trial data.
+                The list contains either one or two lists of strings.
         """
         def pull_from_ct_json(j):
             
@@ -158,19 +160,15 @@ class ClinicalDataset(Dataset):
                     self.single_contradiction.append(DataItem(uuid, j, text_array))
         
         # flatten categories to make indexing easier
-        self.examples = self.single_contradiction + self.single_entailment + self.comparison_contradiction + self.comparison_entailment
-        
-        ### TODO: SHUFFLE WITH SEED IFF THIS OBJECT CANNOT BE SHUFFLED WITH shuffle()
-        
-    def shuffle(self, seed=None):
-        if seed is not None:
-            shuffle(self.examples, lambda: seed)
-        else:
-            shuffle(self.examples)
+        self.examples = self.single_contradiction + self.single_entailment
+        self.examples += self.comparison_contradiction + self.comparison_entailment
 
+
+    ### TODO: implement slicing
     def __getitem__(self, idx):
         
         item = self.examples[idx] # get the whole data item
+
         if item.is_comparison:
             text0 = item.context[0]
             text1 = item.context[1]
@@ -224,12 +222,12 @@ class ClinicalDataset(Dataset):
 
 """
 def get_data(
-    s='train',
-    use_control    = True,
-    flatten        = True,
-    shuf           = False,
-    mix            = False,
-    use_indices    = False
+        s='train',
+        use_control    = True,
+        flatten        = True,
+        shuf           = False,
+        mix            = False,
+        use_indices    = False
     ):
     try:
         return ClinicalDataset(

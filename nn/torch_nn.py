@@ -1,17 +1,21 @@
+import sys
+sys.path.append('.')
+
 import os
+from math import sqrt, log
+
 import torch
 from torch import nn
 import sentencepiece as spm
-from math import sqrt, log
 
 class TransformerNLI(nn.Module):
     def __init__(self, specs=None, mode='encoder_decoder'):
         super(TransformerNLI, self).__init__()
         
-        sp = spm.SentencePieceProcessor()
-        sp.Load(os.path.join('vocab', 'spm.model'))
+        self.sp = spm.SentencePieceProcessor()
+        self.sp.Load(os.path.join('vocab', 'spm.model'))
             
-        self.vocab_size = sp.get_piece_size()
+        self.vocab_size = self.sp.get_piece_size()
         
         if specs is not None:
             self.d_model = specs['d_model']
@@ -59,16 +63,13 @@ class TransformerNLI(nn.Module):
                 layer_norm_eps=1e-5,
                 batch_first=False,
                 norm_first=False,
-                bias=True,
                 device=None,
                 dtype=None
             )
             self.decoder = nn.TransformerDecoder(
                 self.decoder_layer,
                 num_layers=self.num_layers,
-                norm=None,
-                enable_nested_tensor=True,
-                mask_check=True
+                norm=None
             )
             if mode == 'decoder':
                 self.encoder = None
@@ -82,7 +83,6 @@ class TransformerNLI(nn.Module):
                 layer_norm_eps=1e-5,
                 batch_first=False,
                 norm_first=False,
-                bias=True,
                 device=None,
                 dtype=None
             )

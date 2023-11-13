@@ -1,44 +1,46 @@
 import sys
 sys.path.append('.')
 
-from random import shuffle
+from random import shuffle, seed
+
 import torch
 import sentencepiece as spm
 
+# control symbols
 from vocab.control_symbols import control_symbols
+
+# pulls dataset splits
 from data.retrieve_data import get_data
+
+# model architecture
 from torch_nn import *
 
 # manage device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f'Using device: {device}.\n\n\n')
-
-# load vocab and tokenizer
-sp = spm.SentencePieceProcessor()
-sp.Load(os.path.join('vocab', 'spm.model'))
-print(f'Loaded SentencePiece model from {os.path.join("vocab", "spm.model")}.\n\n\n')
+print(f'Using device: {device}.\n')
 
 def train_batch(model, batch, optimizer, criterion):
     
-    id_list = []
-    label_list = []
+    id_list = [] # list of lists of token IDs, each list is one example
+    label_list = [] # list of labels, each label is one example
     max_len = 0
     
+    # tokenize input, get max length
     for item in batch:
-        id_list.append(sp.EncodeAsIds(item[0]))
+        id_list.append(model.sp.EncodeAsIds(item[0]))
         label_list.append(item[1])
         if len(id_list[-1]) > max_len:
             max_len = len(id_list[-1])
     
-    # TODO: pad input to max length - it is not just 0 - there is a pad ID
+    # pad inputs to max length
     for i in range(len(id_list)):
-        id_list[i] += [0] * (max_len - len(id_list[i]))
-
-    # TODO: tokenize input using spm.SentencePieceProcessor()
+        id_list[i] += model.sp.EncodeAsIds('<pad>') * (max_len - len(id_list[i]))
     
-    # TODO: cast ID list to torch tensor
-    # TODO: cast label to torch tensor
-    # TODO: send to device
+    # convert to tensors and move to device
+    id_list = torch.tensor(id_list)
+    label_list = torch.tensor(label_list)
+    id_list = id_list.to(device)
+    label_list = label_list.to(device)
     
     model.zero_grad() # zero the gradients
     
@@ -54,7 +56,7 @@ def train_batch(model, batch, optimizer, criterion):
 
 def main():
     
-    print('Begin train.py.\n\n\n')
+    print('Begin train.py.\n')
     
     ### TRAINING HYPERPARAMETERS ###
     lr = 1e-3
@@ -64,18 +66,16 @@ def main():
     
     ### MODEL HYPERPARAMETERS ###
     specs = {
-        'vocab_size': 10000,
-        'embed_dim': 300,
-        'tf_heads': 6,
-        'tf_dim': 300,
-        'lin_dim': 300,
-        'conv_dim': 300,
-        'kernel_size': 3,
+        'd_model': 256,
+        'num_layers': 6,
+        'nhead': 8,
+        'dim_feedforward': 1024,
+        'embed_dim': 256,
         'dropout': 0.1,
-        'n_layers': 6
+        'activation': 'relu'
     }
     model = TransformerNLI(specs=specs)
-    print(f'Model: {model}\n\n\n')
+    print(f'Model: {model}\n')
     
     ### LEAVE ALONE? ###
     criterion = torch.nn.BCEWithLogitsLoss()
@@ -86,7 +86,7 @@ def main():
     # manage device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     #model.to(device)
-    print(f'Using device: {device}.\n\n\n')
+    print(f'Using device: {device}.\n')
     
     # make optimizer
     optimizer = torch.optim.Adam(model.parameters(),
@@ -95,7 +95,7 @@ def main():
                                  eps=eps,
                                  weight_decay=weight_decay,
                                  amsgrad=amsgrad)
-    print(f'Optimizer: {optimizer}\n\n\n')
+    print(f'Optimizer: {optimizer}\n')
    
     # retrieve data
     train_dataset = get_data('train')
@@ -105,18 +105,21 @@ def main():
     print(f'Loaded {len(train_dataset)} training examples.')
     print(f'Loaded {len(dev_dataset)} dev examples.')
     
+    # initialize shuffle seed
+    seed(42)
+    
     # epoch loop
     for e in range(epochs):
         
         # shuffle data
-        shuffle(train_dataset, seed=42)
-        shuffle(dev_dataset, seed=42)
+        shuffle(train_dataset.examples)
+        shuffle(dev_dataset.examples)
         
         num_batches = len(train_dataset) // batch_size
         
         losses = []
         
-        print(f'Begin epoch {e+1}/{epochs}.\n\n\n')
+        print(f'Begin epoch {e+1}/{epochs}.\n')
         
         # train
         model.train()
@@ -124,13 +127,12 @@ def main():
         # loop over batches
         for i in range(num_batches):
             
-            batch = []
+            batch = train_dataset[i * batch_size: (i + 1) * batch_size]
             
-            for j in range(batch_size):
-                try:
-                    batch.append(train_dataset[i * batch_size + j])
-                except:
-                    break
+            print(batch[0])
+            print(len(batch[0]))
+            print(len(batch))
+            exit()
             
             # train the model on the batch, record the loss
             losses.append(train_batch(model, batch, optimizer, criterion))

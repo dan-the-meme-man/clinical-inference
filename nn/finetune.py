@@ -2,9 +2,11 @@ import sys
 sys.path.append('.')
 
 from random import shuffle
+
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
 
+# pulls dataset splits
 from data.retrieve_data import get_data
 
 # manage model
@@ -35,8 +37,6 @@ def train_batch(model, batch, optimizer, criterion):
             return_attention_mask=False
         ))
         labels.append(item[1])
-    
-    
     
     model.zero_grad() # zero the gradients
     

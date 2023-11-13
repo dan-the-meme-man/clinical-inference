@@ -3,8 +3,10 @@ sys.path.append('.')
 
 import os
 import time
+
 import openai
 
+# pulls dataset splits
 from data.retrieve_data import get_data
 
 # Set your OpenAI API key
