@@ -2,7 +2,7 @@ import json
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import random
 from sklearn.metrics import classification_report
-
+from tqdm import tqdm
 '''
 You can experiment with:
 different gpt models: EleutherAI/gpt-j-6B
@@ -21,7 +21,7 @@ def generate_prompt(training_data, dev_data, few_shot=2):
     dev = json.load(dev)
   train_single = [x for x in train if x['secondary_text']==None]
   train_comp = [x for x in train if x['secondary_text']]
-  for dt in dev:
+  for i, dt in enumerate(dev):
     dt_primary = ' '.join([x.strip() for x in dt['primary_text']])
     dt_label = dt['label'].strip()
     dt_statement = dt['statement'].strip()
@@ -55,20 +55,24 @@ def generate_prompt(training_data, dev_data, few_shot=2):
     labels.append(dt_label)
 
     input_ids = tokenizer(prompt_text, return_tensors="pt").input_ids
-    prompt_length.append(len(input_ids))
-
+    prompt_length.append(len(input_ids[0]))
+    if len(input_ids[0])>1024:
+        print(prompt_length)
+        print(i)
 
   return prompts, labels
 
 def pred(input_prompt, model, tokenizer):
   preds = []
-  for prompt in input_prompt:
+  for prompt in tqdm(input_prompt):
       input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+      
       gen_tokens = model.generate(
-          input_ids,
+          input_ids[:, :1023],
           do_sample=True,
           temperature=0.9,
           max_length=1024,
+	max_new_tokens=1,
       )
       gen_text = tokenizer.batch_decode(gen_tokens)[0]
       preds.append(gen_text)
@@ -76,8 +80,8 @@ def pred(input_prompt, model, tokenizer):
 
 
 if __name__=="__main__":
-    training_data = 'train_data.json'
-    dev_data = 'dev_data.json'
+    training_data = 'training_data/train_data.json'
+    dev_data = 'training_data/dev_data.json'
     prompts, labels= generate_prompt(training_data, dev_data)
     predictions = pred(prompts, model, tokenizer)
 
