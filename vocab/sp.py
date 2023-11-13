@@ -41,4 +41,4 @@ print(sp.__dict__)
 print(sp.this)
 
 print()
-print(sp.DecodeIds([10, 30, 60, 100, 1000, 2000, 4000])) # just some random tokens
+print(sp.DecodeIds([10, 30, 60, 100, 1000, 2000, 2500])) # just some random tokens

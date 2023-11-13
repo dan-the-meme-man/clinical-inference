@@ -2,3 +2,4 @@ torch==2.0.1
 safetensors==0.3.3
 sentencepiece==0.1.99
 openai==0.28.1
+matplotlib==3.7.2
