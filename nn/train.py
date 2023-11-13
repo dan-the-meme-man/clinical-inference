@@ -184,8 +184,8 @@ def main():
             )
             
             # print progress
-            msg = f'Batch {i + 1}/{num_train_batches} loss: {train_losses[-1]:.4}.'
-            msg += f' Average loss: {sum(train_losses)/len(train_losses):.4}.\n'
+            msg = f'Batch {i + 1}/{num_train_batches} loss: {train_losses[-1]:8.4f}.'
+            msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
             log_msg(msg, model.name)
             
         # dump rest of data into a batch if there is any
@@ -201,8 +201,8 @@ def main():
                     update=True
                 )
             )
-            msg = f'Remainder batch loss: {train_losses[-1]:.4}.'
-            msg += f' Average loss: {sum(train_losses)/len(train_losses):.4}.\n'
+            msg = f'Remainder batch loss: {train_losses[-1]:8.4f}.'
+            msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
             log_msg(msg, model.name)
             
         ################################### DEV ###################################
@@ -230,8 +230,8 @@ def main():
                 )
                 
                 # print progress
-                msg = f'Batch {i + 1}/{num_dev_batches} loss: {dev_losses[-1]:.4}.'
-                msg += f' Average loss: {sum(dev_losses)/len(dev_losses):.4}.\n'
+                msg = f'Batch {i + 1}/{num_dev_batches} loss: {dev_losses[-1]:8.4f}.'
+                msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
                 log_msg(msg, model.name)
                 
             # dump rest of data into a batch if there is any
@@ -247,8 +247,8 @@ def main():
                         update=False
                     )
                 )
-                msg = f'Remainder batch loss: {dev_losses[-1]:.4}.'
-                msg += f' Average loss: {sum(dev_losses)/len(dev_losses):.4}.\n'
+                msg = f'Remainder batch loss: {dev_losses[-1]:8.4f}.'
+                msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
                 log_msg(msg, model.name)
                 
     # save model
