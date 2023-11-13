@@ -266,4 +266,4 @@ if __name__ == '__main__':
     if not os.path.exists(CT_path):
         raise FileNotFoundError('CT_dict.json not found. Run serialize_cts.py first.')
     else:
-        print('CT_dict.json found. You may safely run train.py.')
+        print('CT_dict.json found. You may safely build vocab.')
