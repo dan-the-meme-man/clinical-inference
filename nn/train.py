@@ -127,7 +127,8 @@ def main():
         # loop over batches
         for i in range(num_batches):
             
-            batch = train_dataset[i * batch_size: (i + 1) * batch_size]
+            # do not index with slice
+            batch = train_dataset[i * batch_size:(i+1) * batch_size]
             
             print(batch[0])
             print(len(batch[0]))

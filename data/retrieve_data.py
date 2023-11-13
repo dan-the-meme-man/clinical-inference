@@ -163,11 +163,9 @@ class ClinicalDataset(Dataset):
         self.examples = self.single_contradiction + self.single_entailment
         self.examples += self.comparison_contradiction + self.comparison_entailment
 
-
-    ### TODO: implement slicing
-    def __getitem__(self, idx):
-        
-        item = self.examples[idx] # get the whole data item
+    """_summary_
+    """
+    def process_item(self, item):
 
         if item.is_comparison:
             text0 = item.context[0]
@@ -203,8 +201,18 @@ class ClinicalDataset(Dataset):
                 s = s.replace('  ', ' ')
         
         s = s.strip()
-        
+    
         return s, item.label, item
+
+    def __getitem__(self, idx):
+        
+        item = self.examples[idx] # get the whole data item(s)
+        
+        # slice
+        if type(item) == list:
+            return [self.process_item(x) for x in item]
+        else:
+            return self.process_item(item)
     
     def __len__(self):
         return len(self.examples)
