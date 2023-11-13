@@ -159,8 +159,7 @@ class ClinicalDataset(Dataset):
                 else:
                     self.single_contradiction.append(DataItem(uuid, j, text_array))
                     
-            if len(self.single_entailment) == 10:
-                break
+            #if len(self.single_entailment) == 1: break ### DEBUG
         
         # flatten categories to make indexing easier
         self.examples = self.single_contradiction + self.single_entailment

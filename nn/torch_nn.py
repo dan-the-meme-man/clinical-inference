@@ -54,8 +54,8 @@ class TransformerNLI(nn.Module):
         self.pe = self.create_positional_encoding(self.max_length).to(self.device)
         
         # define a name to log output to
-        self.name = f'TransformerNLI_d{self.d_model}_l{self.num_layers}_h{self.nhead}'
-        self.name += f'_ff{self.dim_feedforward}_e{self.embed_dim}_do{self.dropout}_a{self.activation}'
+        self.name = f'TransformerNLI_d_{self.d_model}_l_{self.num_layers}_h_{self.nhead}'
+        self.name += f'_ff_{self.dim_feedforward}_e_{self.embed_dim}_do_{self.dropout}_a_{self.activation}'
         self.specs['name'] = self.name
         
         self.scale = sqrt(self.d_model)
@@ -97,16 +97,16 @@ class TransformerNLI(nn.Module):
         
         # dimensions of input
         batch_size = indices.size(0)
-        max_len = indices.size(1)
+        max_seq_length = indices.size(1)
         
         # mask
-        attn_mask = self.create_attn_mask(max_len)
+        attn_mask = self.create_attn_mask(max_seq_length)
         padding_mask = self.create_padding_mask(indices)
         
         # embedding with dropout and pe
         embed = self.embed(indices)
         embed = self.Dropout(embed)
-        embed = embed*self.scale + self.pe[:max_len, :]
+        embed = embed*self.scale + self.pe[:max_seq_length, :]
         
         # encoder
         enc_out = self.encoder(embed, mask=attn_mask, src_key_padding_mask=padding_mask)
@@ -121,8 +121,8 @@ class TransformerNLI(nn.Module):
         return (indices != self.pad_id).float().to(self.device)
     
     # mask for self-attention
-    def create_attn_mask(self, max_len):
-        attn_mask = (torch.triu(torch.ones(max_len, max_len)) == 1).transpose(0, 1)
+    def create_attn_mask(self, max_seq_length):
+        attn_mask = (torch.triu(torch.ones(max_seq_length, max_seq_length)) == 1).transpose(0, 1)
         attn_mask = attn_mask.float().masked_fill(attn_mask == 0, float('-inf'))
         attn_mask = attn_mask.masked_fill(attn_mask == 1, float(0.0))
         return attn_mask.to(self.device)
