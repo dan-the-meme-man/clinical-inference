@@ -26,7 +26,7 @@ params += ' --normalization_rule_name=nfkc_cf'
 #params = params + ' --model_type=bpe'
 params = params + ' --model_type=unigram'
 
-params += ' --control_symbols=' + ','.join(list(control_symbols.values()))
+params += ' --user_defined_symbols=' + ','.join(list(control_symbols.values()))
 
 params += ' --shrinking_factor=0.95'
 

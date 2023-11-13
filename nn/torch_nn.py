@@ -9,13 +9,16 @@ from torch import nn
 import sentencepiece as spm
 
 class TransformerNLI(nn.Module):
-    def __init__(self, specs=None, mode='encoder_decoder'):
+    def __init__(self, specs=None, device='cpu'):
         super(TransformerNLI, self).__init__()
+
+        self.device = device
         
+        # vocab
         self.sp = spm.SentencePieceProcessor()
         self.sp.Load(os.path.join('vocab', 'spm.model'))
-            
         self.vocab_size = self.sp.get_piece_size()
+        self.pad_id = self.sp.PieceToId('<pad>')
         
         if specs is not None:
             self.d_model = specs['d_model']
@@ -25,6 +28,7 @@ class TransformerNLI(nn.Module):
             self.embed_dim = specs['embed_dim']
             self.dropout = specs['dropout']
             self.activation = specs['activation']
+            self.max_length = specs['max_length']
             self.specs = specs
         else:
             self.d_model = 256
@@ -34,6 +38,7 @@ class TransformerNLI(nn.Module):
             self.embed_dim = 256
             self.dropout = 0.1
             self.activation = 'relu'
+            self.max_length = 3000
             self.specs = {
                 'd_model': self.d_model,
                 'num_layers': self.num_layers,
@@ -41,96 +46,91 @@ class TransformerNLI(nn.Module):
                 'dim_feedforward': self.dim_feedforward,
                 'embed_dim': self.embed_dim,
                 'dropout': self.dropout,
-                'activation': self.activation
+                'activation': self.activation,
+                'max_length': self.max_length
             }
+            
+        # pe
+        self.pe = self.create_positional_encoding(self.max_length).to(self.device)
         
         # define a name to log output to
-        self.name = f'TransformerNLI_{mode}_d{self.d_model}_l{self.num_layers}_h{self.nhead}'
+        self.name = f'TransformerNLI_d{self.d_model}_l{self.num_layers}_h{self.nhead}'
         self.name += f'_ff{self.dim_feedforward}_e{self.embed_dim}_do{self.dropout}_a{self.activation}'
         self.specs['name'] = self.name
         
         self.scale = sqrt(self.d_model)
             
         self.embed = nn.Embedding(self.vocab_size, self.embed_dim)
-        
-        if mode == 'encoder_decoder' or mode == 'decoder':
-            self.decoder_layer = nn.TransformerDecoderLayer(
-                d_model=self.d_model,
-                nhead=self.nhead,
-                dim_feedforward=self.dim_feedforward,
-                dropout=self.dropout,
-                activation=self.activation,
-                layer_norm_eps=1e-5,
-                batch_first=False,
-                norm_first=False,
-                device=None,
-                dtype=None
-            )
-            self.decoder = nn.TransformerDecoder(
-                self.decoder_layer,
-                num_layers=self.num_layers,
-                norm=None
-            )
-            if mode == 'decoder':
-                self.encoder = None
-        if mode == 'encoder_decoder' or mode == 'encoder':
-            self.encoder_layer = nn.TransformerEncoderLayer(
-                d_model=self.d_model,
-                nhead=self.nhead,
-                dim_feedforward=self.dim_feedforward,
-                dropout=self.dropout,
-                activation=self.activation,
-                layer_norm_eps=1e-5,
-                batch_first=False,
-                norm_first=False,
-                device=None,
-                dtype=None
-            )
-            self.encoder = nn.TransformerEncoder(
-                self.encoder_layer,
-                num_layers=self.num_layers,
-                norm=None,
-                enable_nested_tensor=True,
-                mask_check=True
-            )
-            if mode == 'encoder':
-                self.decoder = None
+
+        self.encoder_layer = nn.TransformerEncoderLayer(
+            d_model=self.d_model,
+            nhead=self.nhead,
+            dim_feedforward=self.dim_feedforward,
+            dropout=self.dropout,
+            activation=self.activation,
+            layer_norm_eps=1e-5,
+            batch_first=True,
+            norm_first=False,
+            device=None,
+            dtype=None
+        )
+        self.encoder = nn.TransformerEncoder(
+            self.encoder_layer,
+            num_layers=self.num_layers,
+            norm=None,
+            enable_nested_tensor=True,
+            mask_check=True
+        )
+                
+        self.linear = nn.Linear(self.max_length * self.d_model, 1)
         
         self.n_params = 0
         for p in self.parameters():
             if p.dim() > 1:
                 nn.init.xavier_normal_(p)
                 self.n_params += p.numel()
+        
+        # dropout
+        self.Dropout = nn.Dropout(self.dropout)
+
+    def forward(self, indices):
+        
+        # dimensions of input
+        batch_size = indices.size(0)
+        max_len = indices.size(1)
+        
+        # mask
+        attn_mask = self.create_attn_mask(max_len)
+        padding_mask = self.create_padding_mask(indices)
+        
+        # embedding with dropout and pe
+        embed = self.embed(indices)
+        embed = self.Dropout(embed)
+        embed = embed*self.scale + self.pe[:max_len, :]
+        
+        # encoder
+        enc_out = self.encoder(embed, mask=attn_mask, src_key_padding_mask=padding_mask)
+        enc_out = self.Dropout(enc_out)
+        enc_out = enc_out.view(batch_size, -1)
+        
+        # return single logit for classification
+        return self.linear(enc_out)
     
-    # TODO: add mask, pe, and encoder/decoder
-    def forward(self, indices, mask=None, pe=None):
-        num_batch = len(indices)
-        num_tokens = len(indices[0])
-        
-        prev = torch.cat(indices).view(num_batch, num_tokens)
-        prev = self.embed(prev)
-        prev = self.dropout(prev)
-        
-        if pe is not None: prev = prev * self.scale + pe[:num_tokens, :]
-        if mask is None:
-            prev = self.layers(prev) # TODO: encoder/decoder? could do T5 thing
-        else:
-            prev = self.layers(prev, mask=mask)
-        
-        prev = self.dropout(prev)
-        
-        out = torch.matmul(prev, torch.t(self.embed.weight))
-        
-        return out
+    # mask for padding
+    def create_padding_mask(self, indices):
+        return (indices != self.pad_id).float().to(self.device)
     
-    def create_self_attention_mask(self, max_size):
-        self_attn_mask = (torch.triu(torch.ones(max_size, max_size)) == 1).transpose(0, 1)
-        self_attn_mask = self_attn_mask.float().masked_fill(self_attn_mask == 0, float('-inf')).masked_fill(self_attn_mask == 1, float(0.0))
-        return self_attn_mask
+    # mask for self-attention
+    def create_attn_mask(self, max_len):
+        attn_mask = (torch.triu(torch.ones(max_len, max_len)) == 1).transpose(0, 1)
+        attn_mask = attn_mask.float().masked_fill(attn_mask == 0, float('-inf'))
+        attn_mask = attn_mask.masked_fill(attn_mask == 1, float(0.0))
+        return attn_mask.to(self.device)
     
-    def create_positional_encoding(self, max_size):
-        positional_encoding = torch.zeros(max_size, self.d_model)
-        position = torch.arange(0, max_size, dtype=torch.float).unsqueeze(1)
+    # positional encoding
+    def create_positional_encoding(self, max_len):
+        positional_encoding = torch.zeros(max_len, self.d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, self.d_model, 2).float() * (-log(10000.0) / self.d_model))
         positional_encoding[:, 0::2] = torch.sin(position * div_term)
         positional_encoding[:, 1::2] = torch.cos(position * div_term)

@@ -3,7 +3,7 @@ sys.path.append('.')
 
 import os
 import json
-from random import shuffle
+from random import shuffle, seed
 
 from torch.utils.data import Dataset
 
@@ -158,6 +158,9 @@ class ClinicalDataset(Dataset):
                     self.single_entailment.append(DataItem(uuid, j, text_array))
                 else:
                     self.single_contradiction.append(DataItem(uuid, j, text_array))
+                    
+            if len(self.single_entailment) == 10:
+                break
         
         # flatten categories to make indexing easier
         self.examples = self.single_contradiction + self.single_entailment
@@ -171,6 +174,7 @@ class ClinicalDataset(Dataset):
             text0 = item.context[0]
             text1 = item.context[1]
             if self.shuf: # shuffle text
+                seed(42) # random seed
                 if self.mix: # shuffle the CTRs together
                     text = text0 + text1
                     shuffle(text)
@@ -188,6 +192,7 @@ class ClinicalDataset(Dataset):
         else:
             text0 = item.context[0]
             if self.shuf:
+                seed(42) # random seed
                 shuffle(text0)
                 
             sep = '\n' + self.sent_sep + '\n'
