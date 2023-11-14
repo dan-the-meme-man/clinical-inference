@@ -206,50 +206,49 @@ def main():
             log_msg(msg, model.name)
             
         ################################### DEV ###################################
-        with torch.no_grad():
-            model.eval() # TODO: if nan loss persists, try model.train()...
+        model.eval() # TODO: if nan loss persists, try model.train()...
+        
+        log_msg(f'Begin evaluation {e+1}/{epochs}.\n', model.name)
+        
+        # loop over batches
+        for i in range(num_dev_batches):
             
-            log_msg(f'Begin evaluation {e+1}/{epochs}.\n', model.name)
+            # get batch
+            batch = dev_dataset[i * batch_size : (i+1) * batch_size]
             
-            # loop over batches
-            for i in range(num_dev_batches):
-                
-                # get batch
-                batch = dev_dataset[i * batch_size : (i+1) * batch_size]
-                
-                # train the model on the batch, record the loss
-                dev_losses.append(
-                    train_batch(
-                        model,
-                        batch,
-                        optimizer,
-                        criterion,
-                        device,
-                        update=False
-                    )
+            # train the model on the batch, record the loss
+            dev_losses.append(
+                train_batch(
+                    model,
+                    batch,
+                    optimizer,
+                    criterion,
+                    device,
+                    update=False
                 )
-                
-                # print progress
-                msg = f'Batch {i + 1}/{num_dev_batches} loss: {dev_losses[-1]:8.4f}.'
-                msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
-                log_msg(msg, model.name)
-                
-            # dump rest of data into a batch if there is any
-            batch = dev_dataset[(i+1) * batch_size - 1 : -1]
-            if len(batch) > 0:
-                dev_losses.append(
-                    train_batch(
-                        model,
-                        batch,
-                        optimizer,
-                        criterion,
-                        device,
-                        update=False
-                    )
+            )
+            
+            # print progress
+            msg = f'Batch {i + 1}/{num_dev_batches} loss: {dev_losses[-1]:8.4f}.'
+            msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
+            log_msg(msg, model.name)
+            
+        # dump rest of data into a batch if there is any
+        batch = dev_dataset[(i+1) * batch_size - 1 : -1]
+        if len(batch) > 0:
+            dev_losses.append(
+                train_batch(
+                    model,
+                    batch,
+                    optimizer,
+                    criterion,
+                    device,
+                    update=False
                 )
-                msg = f'Remainder batch loss: {dev_losses[-1]:8.4f}.'
-                msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
-                log_msg(msg, model.name)
+            )
+            msg = f'Remainder batch loss: {dev_losses[-1]:8.4f}.'
+            msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
+            log_msg(msg, model.name)
                 
     # save model
     models_dir = os.path.join('nn', 'models')
