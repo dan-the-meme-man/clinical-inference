@@ -1,0 +1,72 @@
+               precision    recall  f1-score   support
+
+Contradiction       0.50      1.00      0.67       100
+   Entailment       0.00      0.00      0.00       100
+
+     accuracy                           0.50       200
+    macro avg       0.25      0.50      0.33       200
+ weighted avg       0.25      0.50      0.33       200
+               precision    recall  f1-score   support
+
+Contradiction       0.51      0.89      0.64       100
+   Entailment       0.54      0.13      0.21       100
+
+     accuracy                           0.51       200
+    macro avg       0.52      0.51      0.43       200
+ weighted avg       0.52      0.51      0.43       200
+               precision    recall  f1-score   support
+
+Contradiction       0.50      1.00      0.67       100
+   Entailment       0.00      0.00      0.00       100
+
+     accuracy                           0.50       200
+    macro avg       0.25      0.50      0.33       200
+ weighted avg       0.25      0.50      0.33       200
+               precision    recall  f1-score   support
+
+Contradiction       0.50      1.00      0.67       100
+   Entailment       0.00      0.00      0.00       100
+
+     accuracy                           0.50       200
+    macro avg       0.25      0.50      0.33       200
+ weighted avg       0.25      0.50      0.33       200
+               precision    recall  f1-score   support
+
+Contradiction       0.51      0.89      0.64       100
+   Entailment       0.54      0.13      0.21       100
+
+     accuracy                           0.51       200
+    macro avg       0.52      0.51      0.43       200
+ weighted avg       0.52      0.51      0.43       200
+               precision    recall  f1-score   support
+
+Contradiction       0.51      0.52      0.51       100
+   Entailment       0.51      0.50      0.51       100
+
+     accuracy                           0.51       200
+    macro avg       0.51      0.51      0.51       200
+ weighted avg       0.51      0.51      0.51       200
+               precision    recall  f1-score   support
+
+Contradiction       0.50      1.00      0.67       100
+   Entailment       0.00      0.00      0.00       100
+
+     accuracy                           0.50       200
+    macro avg       0.25      0.50      0.33       200
+ weighted avg       0.25      0.50      0.33       200
+               precision    recall  f1-score   support
+
+Contradiction       0.50      1.00      0.67       100
+   Entailment       0.00      0.00      0.00       100
+
+     accuracy                           0.50       200
+    macro avg       0.25      0.50      0.33       200
+ weighted avg       0.25      0.50      0.33       200
+               precision    recall  f1-score   support
+
+Contradiction       0.50      1.00      0.67       850
+   Entailment       0.00      0.00      0.00       850
+
+     accuracy                           0.50      1700
+    macro avg       0.25      0.50      0.33      1700
+ weighted avg       0.25      0.50      0.33      1700

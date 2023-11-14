@@ -25,8 +25,8 @@ else:
 
 MAX_LEN=512 # don't change
 SAVE_PATH = 'models/'
-EPOCH = 5
-HIDDEN_SIZE=50
+EPOCH = 2
+HIDDEN_SIZE=100
 LEARNING_RATE = 5e-5
 
 
@@ -110,14 +110,14 @@ dev_input_ids, dev_attention_masks = preprocessing_for_bert(dev_input)
 
 
 # Convert other data types to torch.Tensor
-train_labels = torch.tensor(train_labels)
+train_labels_ID = torch.tensor(train_labels)
 dev_labels_ID = torch.tensor(dev_labels)
 
 # For fine-tuning BERT, the authors recommend a batch size of 16 or 32.
-batch_size = 32
+batch_size = 16
 
 # Create the DataLoader for our training set
-train_data = TensorDataset(train_input_ids, train_attention_masks, train_labels)
+train_data = TensorDataset(train_input_ids, train_attention_masks, train_labels_ID)
 train_sampler = RandomSampler(train_data)
 train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
 
@@ -323,11 +323,14 @@ def bert_predict(model, test_dataloader):
     all_logits = torch.cat(all_logits, dim=0)
     # Apply softmax to calculate probabilities
     probs = F.softmax(all_logits, dim=1).cpu().numpy()
-    predictions = np.argmax(probs, axis=1)
+    predictions = list(np.argmax(probs, axis=1))
 
     return predictions
 
-pred = bert_predict(bert_classifier, dev_dataloader)
-final_report = classification_report(dev_labels, pred, target_names=['Contradiction', 'Entailment'])
+pred = bert_predict(bert_classifier, train_dataloader)
+print(pred)
+print(dev_labels)
+final_report = classification_report(train_labels, pred, target_names=['Contradiction', 'Entailment'])
+print(final_report)
 with open('report_bert.txt', 'a') as report:
     report.write(final_report)
