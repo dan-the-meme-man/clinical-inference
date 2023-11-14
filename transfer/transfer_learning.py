@@ -21,8 +21,14 @@ if torch.cuda.is_available():
 else:
     print('No GPU available, using the CPU instead.')
     device = torch.device("cpu")
-MAX_LEN=512
+
+
+MAX_LEN=512 # don't change
 SAVE_PATH = 'models/'
+EPOCH = 5
+HIDDEN_SIZE=50
+LEARNING_RATE = 5e-5
+
 
 def preprocess(text):
   return text
@@ -130,7 +136,7 @@ class BertClassifier(nn.Module):
         """
         super(BertClassifier, self).__init__()
         # Specify hidden size of BERT, hidden size of our classifier, and number of labels
-        D_in, H, D_out = 768, 50, 2
+        D_in, H, D_out = 768, HIDDEN_SIZE, 2
 
         # Instantiate BERT model
         self.model = model
@@ -160,7 +166,7 @@ class BertClassifier(nn.Module):
         return logits
 
 
-def initialize_model(epochs=4):
+def initialize_model(epochs=EPOCH):
     """Initialize the Bert Classifier, the optimizer and the learning rate scheduler.
     """
     # Instantiate Bert Classifier
@@ -171,7 +177,7 @@ def initialize_model(epochs=4):
 
     # Create the optimizer
     optimizer = AdamW(bert_classifier.parameters(),
-                      lr=5e-5,    # Default learning rate
+                      lr=LEARNING_RATE,    # Default learning rate
                       eps=1e-8    # Default epsilon value
                       )
 
@@ -243,11 +249,11 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
         avg_train_loss = total_loss / len(train_dataloader)
         print("-"*70)
 
-    model_save_path =SAVE_PATH
-    model_to_save = bert_classifier.module if hasattr(bert_classifier,
-                                                      'module') else bert_classifier  # Take care of distributed/parallel training
-    model_to_save.save_pretrained(model_save_path)
-    tokenizer.save_pretrained(model_save_path)
+    # model_save_path =SAVE_PATH
+    # model_to_save = bert_classifier.module if hasattr(bert_classifier,
+    #                                                   'module') else bert_classifier  # Take care of distributed/parallel training
+    # model_to_save.save_pretrained(model_save_path)
+    # tokenizer.save_pretrained(model_save_path)
   # =======================================
   #               Evaluation
   # =======================================
@@ -295,8 +301,8 @@ def evaluate(model, val_dataloader):
   return val_loss, val_accuracy
 
 set_seed(42)    # Set seed for reproducibility
-bert_classifier, optimizer, scheduler = initialize_model(epochs=2)
-train(bert_classifier, train_dataloader, dev_dataloader, epochs=2, evaluation=True)
+bert_classifier, optimizer, scheduler = initialize_model(epochs=EPOCH)
+train(bert_classifier, train_dataloader, dev_dataloader, epochs=EPOCH, evaluation=True)
 
 
 def bert_predict(model, test_dataloader):
