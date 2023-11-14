@@ -14,6 +14,8 @@ def test(model, item, device):
     # pad
     indices[0] += [model.sp.PieceToId('<pad>')] * (model.max_length - len(indices[0]))
     
+    print(model.max_length, len(indices[0]))
+
     # convert to tensors and move to device
     indices = torch.tensor(indices)
     indices = indices.to(device)
@@ -22,8 +24,12 @@ def test(model, item, device):
         
     del indices # delete to free up memory
     torch.cuda.empty_cache() # empty cache
-    
-    return 1 if torch.sigmoid(output) > 0.5 else 0
+
+    logit = torch.sigmoid(output)[0].item()
+    class_output = 1 if logit > 0.5 else 0
+    print(logit)
+
+    return class_output
 
 def main():
 
@@ -31,12 +37,21 @@ def main():
     model_files = os.listdir(os.path.join('nn', 'models'))
 
     # get dev data for testing
-    dev_dataset = get_data('dev')
+    dev_dataset = get_data(
+        'dev',
+        use_control=False,
+        flatten=True,
+        mix=False,
+        shuf=False,
+        use_indices=False
+    )
     l = len(dev_dataset)
+    print(f'Loaded {l} dev items.')
     
     # manage device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
+    print(f'Using device {device}.')
+
     # test output directory
     test_dir = os.path.join('nn', 'tests')
     if not os.path.exists(test_dir):
@@ -48,6 +63,7 @@ def main():
         model = torch.load(os.path.join('nn', 'models', model_file), map_location=device)
         model.device = device
         model_name = model.name
+        print(f'Testing {model.name}.')
         model.eval()
         
         tp = 0
@@ -63,15 +79,17 @@ def main():
             output = test(model, item, device)
             
             if output == 0:
-                if output == 0:
+                if label == 0:
                     tn += 1
-                elif output == 1:
+                elif label == 1:
                     fn += 1
             elif output == 1:
-                if output == 0:
+                if label == 0:
                     fp += 1
-                elif output == 1:
+                elif label == 1:
                     tp += 1
+            
+            #print(f'TP: {tp}. TN: {tn}. FP: {fp}. FN: {fn}.')
                         
         # calculate accuracy
         accuracy = (tp + tn) / (tp + tn + fp + fn)
@@ -79,6 +97,8 @@ def main():
         recall = tp / (tp + fn)
         f1 = 2 * ((precision * recall) / (precision + recall))
         
+        print(f'Accuracy: {accuracy}. Precision: {precision}. Recall: {recall}. F1: {f1}.')
+
         # write to file
         with open(os.path.join(test_dir, f'{model_name}.txt'), 'w+', encoding='utf-8') as f:
             f.write(f'Accuracy: {accuracy}\n')
