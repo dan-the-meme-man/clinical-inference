@@ -20,7 +20,7 @@ def test(model, item, device):
     
     output = model(indices) # forward pass
         
-    del indices, labels # delete to free up memory
+    del indices # delete to free up memory
     torch.cuda.empty_cache() # empty cache
     
     return 1 if torch.sigmoid(output) > 0.5 else 0
@@ -45,7 +45,8 @@ def main():
     for model_file in model_files:
         
         # load model, get name, set to eval mode
-        model = torch.load(os.path.join('nn', 'models', model_file))
+        model = torch.load(os.path.join('nn', 'models', model_file), map_location=device)
+        model.device = device
         model_name = model.name
         model.eval()
         

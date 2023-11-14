@@ -1,0 +1,5 @@
+Currently Loaded Modulefiles:
+  1) cuda/11.8
+/home/drd92/.local/lib/python3.9/site-packages/torch/nn/modules/transformer.py:562: UserWarning: Converting mask without torch.bool dtype to bool; this will negatively affect performance. Prefer to use a boolean mask directly. (Triggered internally at ../aten/src/ATen/native/transformers/attention.cpp:150.)
+  return torch._transformer_encoder_layer_fwd(
+No Modulefiles Currently Loaded.
