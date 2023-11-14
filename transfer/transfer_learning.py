@@ -1,4 +1,3 @@
-%%time
 import torch
 import torch.nn as nn
 from tqdm import tqdm
@@ -9,8 +8,9 @@ from transformers import AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 import numpy as np
 
+from transformers import BertModel
 tokenizer = AutoTokenizer.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
-model = AutoModelForMaskedLM.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
+model =BertModel.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
@@ -153,15 +153,9 @@ class BertClassifier(nn.Module):
                       num_labels)
         """
         # Feed input to BERT
-        outputs = self.model(input_ids=input_ids,
-                             attention_mask=attention_mask)
-
-        # Extract the last hidden state of the token `[CLS]` for classification task
-        last_hidden_state_cls = outputs[0][:, 0, :]
-
-        # Feed input to classifier to compute logits
-        logits = self.classifier(last_hidden_state_cls)
-
+        outputs = self.model(input_ids=input_ids,attention_mask=attention_mask)
+        pooled_output = outputs.pooler_output
+        logits = self.classifier(pooled_output)
         return logits
 
 
