@@ -7,8 +7,9 @@ from transformers import AutoTokenizer, AutoModelForMaskedLM
 from transformers import AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 import numpy as np
-
+import torch.nn.functional as F
 from transformers import BertModel
+from sklearn.metrics import classification_report
 tokenizer = AutoTokenizer.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
 model =BertModel.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
 
@@ -104,7 +105,7 @@ dev_input_ids, dev_attention_masks = preprocessing_for_bert(dev_input)
 
 # Convert other data types to torch.Tensor
 train_labels = torch.tensor(train_labels)
-dev_labels = torch.tensor(dev_labels)
+dev_labels_ID = torch.tensor(dev_labels)
 
 # For fine-tuning BERT, the authors recommend a batch size of 16 or 32.
 batch_size = 32
@@ -115,7 +116,7 @@ train_sampler = RandomSampler(train_data)
 train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
 
 # Create the DataLoader for our validation set
-dev_data = TensorDataset(dev_input_ids, dev_attention_masks, dev_labels)
+dev_data = TensorDataset(dev_input_ids, dev_attention_masks, dev_labels_ID)
 dev_sampler = SequentialSampler(dev_data)
 dev_dataloader = DataLoader(dev_data, sampler=dev_sampler, batch_size=batch_size)
 
@@ -296,3 +297,31 @@ def evaluate(model, val_dataloader):
 set_seed(42)    # Set seed for reproducibility
 bert_classifier, optimizer, scheduler = initialize_model(epochs=2)
 train(bert_classifier, train_dataloader, dev_dataloader, epochs=2, evaluation=True)
+
+
+def bert_predict(model, test_dataloader):
+
+    # Put the model into the evaluation mode. The dropout layers are disabled during
+    # the test time.
+    model.eval()
+    all_logits = []
+    # For each batch in our test set...
+    for batch in test_dataloader:
+        # Load batch to GPU
+        b_input_ids, b_attn_mask = tuple(t.to(device) for t in batch)[:2]
+        # Compute logits
+        with torch.no_grad():
+            logits = model(b_input_ids, b_attn_mask)
+            all_logits.append(logits)
+            # Concatenate logits from each batch
+    all_logits = torch.cat(all_logits, dim=0)
+    # Apply softmax to calculate probabilities
+    probs = F.softmax(all_logits, dim=1).cpu().numpy()
+    predictions = np.argmax(probs, axis=1)
+
+    return predictions
+
+pred = bert_predict(bert_classifier, dev_dataloader)
+final_report = classification_report(dev_labels, pred, target_names=['Contradiction', 'Entailment'])
+with open('report_bert.txt', 'a') as report:
+    report.write(final_report)
