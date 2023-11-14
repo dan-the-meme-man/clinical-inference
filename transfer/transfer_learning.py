@@ -21,7 +21,7 @@ else:
     print('No GPU available, using the CPU instead.')
     device = torch.device("cpu")
 MAX_LEN=512
-
+SAVE_PATH = 'models/'
 
 def preprocess(text):
   return text
@@ -247,6 +247,12 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
         # Calculate the average loss over the entire training data
         avg_train_loss = total_loss / len(train_dataloader)
         print("-"*70)
+
+    model_save_path =SAVE_PATH
+    model_to_save = bert_classifier.module if hasattr(bert_classifier,
+                                                      'module') else bert_classifier  # Take care of distributed/parallel training
+    model_to_save.save_pretrained(model_save_path)
+    tokenizer.save_pretrained(model_save_path)
   # =======================================
   #               Evaluation
   # =======================================
@@ -260,6 +266,8 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
       print("-"*70)
       print("\n")
       print("Training complete!")
+
+
 
 def evaluate(model, val_dataloader):
   """After the completion of each training epoch, measure the model's performance
