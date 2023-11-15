@@ -9,3 +9,5 @@ nn/plots/
 nn/logs/
 vocab/spm.*
 vocab/vocab.txt
+logs/
+*.sh
