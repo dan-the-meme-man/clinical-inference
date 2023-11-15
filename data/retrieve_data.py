@@ -78,6 +78,8 @@ class ClinicalDataset(Dataset):
                  mix            = False,
                  use_indices    = False):
         
+        seed(42) # random seed
+        
         # define some control symbols
         if use_control:
             self.cls = control_symbols['cls']
@@ -173,7 +175,7 @@ class ClinicalDataset(Dataset):
             text0 = item.context[0]
             text1 = item.context[1]
             if self.shuf: # shuffle text
-                seed(42) # random seed
+                
                 if self.mix: # shuffle the CTRs together
                     text = text0 + text1
                     shuffle(text)
@@ -191,7 +193,6 @@ class ClinicalDataset(Dataset):
         else:
             text0 = item.context[0]
             if self.shuf:
-                seed(42) # random seed
                 shuffle(text0)
                 
             sep = '\n' + self.sent_sep + '\n'

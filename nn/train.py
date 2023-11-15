@@ -127,7 +127,7 @@ def main():
         'train',
         use_control=False,
         flatten=True,
-        shuf=False,
+        shuf=True,
         mix=False,
         use_indices=False
     )
@@ -254,7 +254,7 @@ def main():
     models_dir = os.path.join('nn', 'models')
     if not os.path.exists(models_dir):
         os.mkdir(models_dir)
-    torch.save(model, os.path.join(models_dir, model.name))
+    torch.save(model, os.path.join(models_dir, model.name + '.pt'))
     
     # plot losses
     plots_dir = os.path.join('nn', 'plots')
