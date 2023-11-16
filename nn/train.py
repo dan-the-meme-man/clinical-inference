@@ -20,10 +20,11 @@ from torch_nn import *
         
     Attributes:
         msg (str): the message to log
+        param_str (str): the file to log to
 """
-def log_msg(msg, model_name):
+def log_msg(msg, param_str):
     print(msg)
-    with open(os.path.join('nn', 'logs', f'{model_name}.log'), 'a+', encoding='utf-8') as f:
+    with open(os.path.join('nn', 'logs', f'{param_str}.log'), 'a+', encoding='utf-8') as f:
         f.write(msg + '\n')
 
 """Trains the model for one batch.
@@ -77,10 +78,10 @@ def train_batch(model, batch, optimizer, criterion, device, update):
 def main():
     
     ### TRAINING HYPERPARAMETERS ###
-    lr = 1e-4
+    lr = 1e-5
     weight_decay = 1e-4
     batch_size = 1
-    epochs = 10
+    epochs = 100
     
     ### MODEL HYPERPARAMETERS ###
     specs = {
@@ -104,12 +105,13 @@ def main():
     logs_dir = os.path.join('nn', 'logs')
     if not os.path.exists(logs_dir):
         os.mkdir(logs_dir)
-    
+
     # manage device and create model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = TransformerNLI(specs=specs, device=device).to(device)
-    log_msg(f'Model: {model}\n', model.name)
-    log_msg(f'Using device: {device}.\n', model.name)
+    param_str = f'{model.name}_lr_{lr}_wd_{weight_decay}_bs_{batch_size}_ep_{epochs}'
+    log_msg(f'Model: {model}\n', param_str)
+    log_msg(f'Using device: {device}.\n', param_str)
     
     # make optimizer
     optimizer = torch.optim.Adam(
@@ -120,7 +122,7 @@ def main():
         weight_decay=weight_decay,
         amsgrad=amsgrad
     )
-    log_msg(f'Optimizer: {optimizer}\n', model.name)
+    log_msg(f'Optimizer: {optimizer}\n', param_str)
    
     # retrieve data
     train_dataset = get_data(
@@ -141,8 +143,8 @@ def main():
     )
 
     # ensure correct counts: 1700 train, 200 dev
-    log_msg(f'Loaded {len(train_dataset)} training examples.', model.name)
-    log_msg(f'Loaded {len(dev_dataset)} dev examples.', model.name)
+    log_msg(f'Loaded {len(train_dataset)} training examples.', param_str)
+    log_msg(f'Loaded {len(dev_dataset)} dev examples.', param_str)
     
     # initialize shuffle seed
     seed(42)
@@ -160,7 +162,7 @@ def main():
         train_losses = []
         dev_losses = []
         
-        log_msg(f'Begin epoch {e+1}/{epochs}.\n', model.name)
+        log_msg(f'Begin epoch {e+1}/{epochs}.\n', param_str)
         
         ################################## TRAIN ##################################
         model.train()
@@ -186,7 +188,7 @@ def main():
             # print progress
             msg = f'Batch {i + 1}/{num_train_batches} loss: {train_losses[-1]:8.4f}.'
             msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
-            log_msg(msg, model.name)
+            log_msg(msg, param_str)
             
         # dump rest of data into a batch if there is any
         batch = train_dataset[(i+1) * batch_size - 1 : -1]
@@ -203,12 +205,12 @@ def main():
             )
             msg = f'Remainder batch loss: {train_losses[-1]:8.4f}.'
             msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
-            log_msg(msg, model.name)
+            log_msg(msg, param_str)
             
         ################################### DEV ###################################
         model.eval() # TODO: if nan loss persists, try model.train()...
         
-        log_msg(f'Begin evaluation {e+1}/{epochs}.\n', model.name)
+        log_msg(f'Begin evaluation {e+1}/{epochs}.\n', param_str)
         
         # loop over batches
         for i in range(num_dev_batches):
@@ -231,7 +233,7 @@ def main():
             # print progress
             msg = f'Batch {i + 1}/{num_dev_batches} loss: {dev_losses[-1]:8.4f}.'
             msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
-            log_msg(msg, model.name)
+            log_msg(msg, param_str)
             
         # dump rest of data into a batch if there is any
         batch = dev_dataset[(i+1) * batch_size - 1 : -1]
@@ -248,13 +250,13 @@ def main():
             )
             msg = f'Remainder batch loss: {dev_losses[-1]:8.4f}.'
             msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
-            log_msg(msg, model.name)
+            log_msg(msg, param_str)
                 
     # save model
     models_dir = os.path.join('nn', 'models')
     if not os.path.exists(models_dir):
         os.mkdir(models_dir)
-    torch.save(model, os.path.join(models_dir, model.name + '.pt'))
+    torch.save(model, os.path.join(models_dir, param_str + '.pt'))
     
     # plot losses
     plots_dir = os.path.join('nn', 'plots')
@@ -268,7 +270,7 @@ def main():
     plt.legend()
     plt.grid()
     plt.title('Losses')
-    plt.savefig(os.path.join(plots_dir, model.name + '_losses.png'))
+    plt.savefig(os.path.join(plots_dir, param_str + '_losses.png'))
     
 if __name__ == '__main__':
     main()

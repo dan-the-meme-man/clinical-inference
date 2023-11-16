@@ -13,8 +13,6 @@ def test(model, item, device):
     
     # pad
     indices[0] += [model.sp.PieceToId('<pad>')] * (model.max_length - len(indices[0]))
-    
-    print(model.max_length, len(indices[0]))
 
     # convert to tensors and move to device
     indices = torch.tensor(indices)
@@ -62,7 +60,7 @@ def main():
         # load model, get name, set to eval mode
         model = torch.load(os.path.join('nn', 'models', model_file), map_location=device)
         model.device = device
-        model_name = model.name
+        model_name = model_file.split('.')[0]
         print(f'Testing {model.name}.')
         model.eval()
         
