@@ -78,8 +78,8 @@ def train_batch(model, batch, optimizer, criterion, device, update):
 def main():
     
     ### TRAINING HYPERPARAMETERS ###
-    lr = 1e-5
-    weight_decay = 1e-4
+    lr = 5e-5
+    weight_decay = 5e-5
     batch_size = 1
     epochs = 100
     
@@ -148,6 +148,10 @@ def main():
     
     # initialize shuffle seed
     seed(42)
+
+    # for plotting
+    train_losses = []
+    dev_losses = []
     
     ################################## EPOCH ##################################
     for e in range(epochs):
@@ -158,9 +162,6 @@ def main():
         
         num_train_batches = len(train_dataset) // batch_size
         num_dev_batches = len(dev_dataset) // batch_size
-        
-        train_losses = []
-        dev_losses = []
         
         log_msg(f'Begin epoch {e+1}/{epochs}.\n', param_str)
         

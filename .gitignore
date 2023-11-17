@@ -11,3 +11,4 @@ vocab/spm.*
 vocab/vocab.txt
 logs/
 *.sh
+*overfit*

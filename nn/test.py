@@ -60,8 +60,8 @@ def main():
         # load model, get name, set to eval mode
         model = torch.load(os.path.join('nn', 'models', model_file), map_location=device)
         model.device = device
-        model_name = model_file.split('.')[0]
-        print(f'Testing {model.name}.')
+        model_name = model_file[:-3]
+        print(f'Testing {model_name}.')
         model.eval()
         
         tp = 0
@@ -87,14 +87,23 @@ def main():
                 elif label == 1:
                     tp += 1
             
-            #print(f'TP: {tp}. TN: {tn}. FP: {fp}. FN: {fn}.')
+            print(f'TP: {tp}. TN: {tn}. FP: {fp}. FN: {fn}.')
                         
         # calculate accuracy
         accuracy = (tp + tn) / (tp + tn + fp + fn)
-        precision = tp / (tp + fp)
-        recall = tp / (tp + fn)
-        f1 = 2 * ((precision * recall) / (precision + recall))
-        
+        try:
+            precision = tp / (tp + fp)
+        except:
+            precision = torch.nan
+        try:
+            recall = tp / (tp + fn)
+        except:
+            precision = torch.nan
+        try:
+            f1 = 2 * ((precision * recall) / (precision + recall))
+        except:
+            f1 = torch.nan
+
         print(f'Accuracy: {accuracy}. Precision: {precision}. Recall: {recall}. F1: {f1}.')
 
         # write to file
