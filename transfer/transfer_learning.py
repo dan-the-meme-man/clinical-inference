@@ -3,6 +3,7 @@ import torch.nn as nn
 from tqdm import tqdm
 import random
 import time
+from sklearn.utils import shuffle
 from transformers import AutoTokenizer, AutoModelForMaskedLM
 from transformers import AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
@@ -25,7 +26,7 @@ else:
 
 MAX_LEN=512 # don't change
 SAVE_PATH = 'models/'
-EPOCH = 2
+EPOCH = 100
 HIDDEN_SIZE=100
 LEARNING_RATE = 5e-5
 
@@ -43,7 +44,8 @@ def data_preprocess(data):
     labels = []
     with open(data) as data_file:
         data_f = json.load(data_file)
-        for f in data_f:
+        data_f = shuffle(data_f)
+        for i, f in enumerate(data_f):
             primary_text = ' '.join([x.strip() for x in f['primary_text']])
             statement = f['statement']
             if f['secondary_text']:
@@ -54,6 +56,8 @@ def data_preprocess(data):
                 secondary_text = ''
                 text_type = 'single'
                 input = f'Text type: {text_type} Primary text: {primary_text} Statement: {statement}'
+            if i>20:
+                break
             label = label_num_pair[f['label']]
             inputs.append(input)
             labels.append(label)
@@ -136,7 +140,7 @@ class BertClassifier(nn.Module):
         """
         super(BertClassifier, self).__init__()
         # Specify hidden size of BERT, hidden size of our classifier, and number of labels
-        D_in, H, D_out = 768, HIDDEN_SIZE, 2
+        D_in, H, D_out = 768, HIDDEN_SIZE, 1
 
         # Instantiate BERT model
         self.model = model
@@ -323,13 +327,14 @@ def bert_predict(model, test_dataloader):
     all_logits = torch.cat(all_logits, dim=0)
     # Apply softmax to calculate probabilities
     probs = F.softmax(all_logits, dim=1).cpu().numpy()
-    predictions = list(np.argmax(probs, axis=1))
+    predictions = [-1 if x < 0 else 1 for x in probs]
+
 
     return predictions
 
 pred = bert_predict(bert_classifier, train_dataloader)
 print(pred)
-print(dev_labels)
+print(train_labels)
 final_report = classification_report(train_labels, pred, target_names=['Contradiction', 'Entailment'])
 print(final_report)
 with open('report_bert.txt', 'a') as report:
