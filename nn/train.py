@@ -78,10 +78,10 @@ def train_batch(model, batch, optimizer, criterion, device, update):
 def main():
     
     ### TRAINING HYPERPARAMETERS ###
-    lr = 5e-5
-    weight_decay = 5e-5
+    lr = 7.5e-5
+    weight_decay = 7.5e-5
     batch_size = 1
-    epochs = 100
+    epochs = 10
     
     ### MODEL HYPERPARAMETERS ###
     specs = {
