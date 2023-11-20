@@ -89,8 +89,7 @@ class TransformerNLI(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_normal_(p)
                 self.n_params += p.numel()
-        print(self.n_params)
-        exit()
+
         # dropout
         self.Dropout = nn.Dropout(self.dropout)
 

@@ -3,6 +3,7 @@ sys.path.append('.')
 
 import os
 import torch
+from sklearn.metrics import classification_report
 
 from data.retrieve_data import *
 
@@ -25,7 +26,7 @@ def test(model, item, device):
 
     logit = torch.sigmoid(output)[0].item()
     class_output = 1 if logit > 0.5 else 0
-    print(logit)
+    #print(logit)
 
     return class_output
 
@@ -64,58 +65,24 @@ def main():
         print(f'Testing {model_name}.')
         model.eval()
         
-        tp = 0
-        tn = 0
-        fp = 0
-        fn = 0
+        preds = []
+        labels = []
         
         # test model
         #with torch.no_grad():
         for i in range(l):
             item = dev_dataset[i]
-            label = item[1]
-            output = test(model, item, device)
-            
-            if output == 0:
-                if label == 0:
-                    tn += 1
-                elif label == 1:
-                    fn += 1
-            elif output == 1:
-                if label == 0:
-                    fp += 1
-                elif label == 1:
-                    tp += 1
-            
-            print(f'TP: {tp}. TN: {tn}. FP: {fp}. FN: {fn}.')
+            labels.append(item[1])
+            preds.append(test(model, item, device))
                         
         # calculate accuracy
-        accuracy = (tp + tn) / (tp + tn + fp + fn)
-        try:
-            precision = tp / (tp + fp)
-        except:
-            precision = torch.nan
-        try:
-            recall = tp / (tp + fn)
-        except:
-            precision = torch.nan
-        try:
-            f1 = 2 * ((precision * recall) / (precision + recall))
-        except:
-            f1 = torch.nan
+        report = classification_report(labels, preds)
 
-        print(f'Accuracy: {accuracy}. Precision: {precision}. Recall: {recall}. F1: {f1}.')
+        print(report)
 
         # write to file
         with open(os.path.join(test_dir, f'{model_name}.txt'), 'w+', encoding='utf-8') as f:
-            f.write(f'Accuracy: {accuracy}\n')
-            f.write(f'Precision: {precision}\n')
-            f.write(f'Recall: {recall}\n')
-            f.write(f'F1: {f1}\n')
-            f.write(f'TP: {tp}/{l}\n')
-            f.write(f'TN: {tn}/{l}\n')
-            f.write(f'FP: {fp}/{l}\n')
-            f.write(f'FN: {fn}/{l}\n')
+            f.write(report)
 
 if __name__ == '__main__':
     main()
