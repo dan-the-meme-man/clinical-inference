@@ -23,8 +23,8 @@ def download_zip(url, path, dest):
         subprocess.call(cmd2, shell=True)
     print('Please ensure that the file has been unzipped correctly.')
     print('If not, try the following commands:')
-    print('Linux: ' + cmd1)
-    print('Windows: ' + ' '.join(cmd2.split(' ')[1:]))
+    print('\tLinux: ' + cmd1)
+    print('\tWindows: ' + ' '.join(cmd2.split(' ')[1:]))
 
 mnli_url = 'https://cims.nyu.edu/~sbowman/multinli/multinli_1.0.zip'
 mnli_path = os.path.join('data', 'multinli_1.0.zip')

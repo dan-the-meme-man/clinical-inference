@@ -22,10 +22,11 @@ pip install -r requirements.txt
 ```
 
 If you are a Linux user, you should have the ```unzip``` util installed. If you are a Windows user, you should
-have the Windows tool Expand-Archive instead. The Python script ```fetch_task.py``` will clone the repository and unzip the data files for you. You should then run ```serialize_cts.py``` to create the serialized data files:
+have the Windows tool Expand-Archive instead. The Python script ```fetch_task.py``` will clone the repository and unzip the data files for you. You can also retrieve open domain data with ```fetch_open_domain.py```. You should then run ```serialize_cts.py``` to create the serialized data files:
 
 ```bash
 python data/fetch_task.py
+python data/fetch_open_domain.py
 python data/serialize_cts.py
 ```
 
