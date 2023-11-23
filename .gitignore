@@ -12,3 +12,4 @@ vocab/vocab.txt
 logs/
 *.sh
 *overfit*
+*.zip

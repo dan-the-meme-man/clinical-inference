@@ -105,12 +105,12 @@ class TransformerNLI(nn.Module):
         
         # embedding with dropout and pe
         embed = self.embed(indices)
-        embed = self.Dropout(embed)
+        #embed = self.Dropout(embed)
         embed = embed*self.scale + self.pe[:max_seq_length, :]
         
         # encoder
         enc_out = self.encoder(embed, mask=attn_mask, src_key_padding_mask=padding_mask)
-        enc_out = self.Dropout(enc_out)
+        #enc_out = self.Dropout(enc_out)
         enc_out = enc_out.view(batch_size, -1)
         
         # return single logit for classification
