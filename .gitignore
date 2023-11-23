@@ -3,10 +3,13 @@ __pycache__/
 .DS_Store
 Task-2-SemEval-2024/
 data/CT_dict.json
+data/mnli_data/
+data/snli_data/
 baseline/key.txt
 nn/models/
 nn/plots/
 nn/logs/
+nn/tests/
 vocab/spm.*
 vocab/vocab.txt
 logs/
