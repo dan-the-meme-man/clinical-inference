@@ -10,11 +10,29 @@ from torch.utils.data import Dataset
 # control symbols which are used in several scripts
 from vocab.control_symbols import control_symbols
 
+seed(42) # random seed
+
 # paths to the training data
-jsons_path = os.path.join('Task-2-SemEval-2024', 'training_data')
+clin_jsons_path = os.path.join('Task-2-SemEval-2024', 'training_data')
 CT_path = os.path.join('data', 'CT_dict.json')
 
-"""A single item of data in a convenient format.
+"""A helper function to load a JSONL file into a list of JSON objects.
+
+    Args:
+        file_path (str): The path to the JSONL file to load.
+    
+    Returns:
+        list: A list of Python dicts.
+"""
+def load_jsonl(file_path):
+    data = []
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            json_object = json.loads(line)
+            data.append(json_object)
+    return data
+
+"""A single item of clinical data in a convenient format.
     
     Attributes:
         uuid (str): UUID from train.json or dev.json.
@@ -31,7 +49,7 @@ CT_path = os.path.join('data', 'CT_dict.json')
         flatten(): Returns a flattened string representation of the context. This should be used
         only for building a vocabulary.txt.
 """
-class DataItem():
+class ClinDataItem():
     def __init__(self, uuid, j, text_array):
         self.uuid = uuid
         self.json = j
@@ -52,22 +70,42 @@ class DataItem():
             
         return text
 
+"""A single item of SNLI data in a convenient format.
+
+    Attributes:
+        pair_id (str): The pair ID from the SNLI dataset.
+        sentence1 (str): The first sentence.
+        sentence2 (str): The second sentence.
+        label (int): 0 for entailment, 1 for contradiction.
+"""
+class NLIDataItem():
+    def __init__(self, pair_id, sentence1, sentence2, label):
+        self.pair_id = pair_id
+        self.sentence1 = sentence1
+        self.sentence2 = sentence2
+        self.label = label
+
 """A PyTorch Dataset for the clinical trial data.
 
     Args:
         file_path (str): The path to the JSON file to load.
+        use_control (bool): If True, use control symbols.
         flatten (bool): If True, replace all whitespace with a single space.
         shuf (bool): If True, shuffle the item-internal texts.
         mix (bool): If True, mix CTRs together in comparison examples. This is ignored if shuf is False.
+        use_indices (bool): If True, only keep the relevant sentences from the clinical trial data.
 
     Attributes:
-        examples (list): A list of DataItems.
-        num_single (int): The number of single examples.
-        num_comparison (int): The number of comparison examples.
+        examples (list): A list of ClinDataItems.
+        single_entailment (list): A list of ClinDataItems which are single entailments.
+        comparison_entailment (list): A list of ClinDataItems which are comparison entailments.
+        single_contradiction (list): A list of ClinDataItems which are single contradictions.
+        comparison_contradiction (list): A list of ClinDataItems which are comparison contradictions.
         
     Functions:
         __len__(): Returns the number of examples.
         __getitem__(idx): Returns the example at index idx.
+        process_item(item): Helper function for __getitem__().
 """
 class ClinicalDataset(Dataset):
     def __init__(self,
@@ -77,8 +115,6 @@ class ClinicalDataset(Dataset):
                  shuf           = False,
                  mix            = False,
                  use_indices    = False):
-        
-        seed(42) # random seed
         
         # define some control symbols
         if use_control:
@@ -108,7 +144,7 @@ class ClinicalDataset(Dataset):
         self.comparison_contradiction = []
         
         # fetch training/dev examples
-        jsons = json.load(open(file_path, 'r', encoding='utf-8'))
+        clin_jsons = json.load(open(file_path, 'r', encoding='utf-8'))
         
         # fetch clinical trial data to pull from
         cts = json.load(open(CT_path, 'r', encoding='utf-8'))
@@ -147,19 +183,19 @@ class ClinicalDataset(Dataset):
             return [ct_data_1_keep]
         
         # make data examples
-        for uuid in jsons: # keys of this dict are the uuids of the examples
-            j = jsons[uuid]
+        for uuid in clin_jsons: # keys of this dict are the uuids of the examples
+            j = clin_jsons[uuid]
             text_array = pull_from_ct_json(j)
             if len(text_array) == 2: # comparisons
                 if j['Label'] == 'Entailment':
-                    self.comparison_entailment.append(DataItem(uuid, j, text_array))
+                    self.comparison_entailment.append(ClinDataItem(uuid, j, text_array))
                 else:
-                    self.comparison_contradiction.append(DataItem(uuid, j, text_array))
+                    self.comparison_contradiction.append(ClinDataItem(uuid, j, text_array))
             else: # singles
                 if j['Label'] == 'Entailment':
-                    self.single_entailment.append(DataItem(uuid, j, text_array))
+                    self.single_entailment.append(ClinDataItem(uuid, j, text_array))
                 else:
-                    self.single_contradiction.append(DataItem(uuid, j, text_array))
+                    self.single_contradiction.append(ClinDataItem(uuid, j, text_array))
                     
             #if len(self.single_entailment) == 1: break ### DEBUG
         
@@ -167,8 +203,6 @@ class ClinicalDataset(Dataset):
         self.examples = self.single_contradiction + self.single_entailment
         self.examples += self.comparison_contradiction + self.comparison_entailment
 
-    """_summary_
-    """
     def process_item(self, item):
 
         if item.is_comparison:
@@ -221,6 +255,92 @@ class ClinicalDataset(Dataset):
     
     def __len__(self):
         return len(self.examples)
+    
+"""A PyTorch Dataset for the SNLI dataset.
+
+    Args:
+        use_control (bool): If True, use control symbols.
+
+    Attributes:
+        examples (list): A list of SNLIDataItems.
+        num_entailment (int): The number of entailment examples.
+        num_contradiction (int): The number of contradiction examples.
+        
+    Functions:
+        __len__(): Returns the number of examples.
+        __getitem__(idx): Returns the example at index idx.
+"""
+class NLIDataset(Dataset):
+    def __init__(self, which='snli', use_control=True):
+        
+        if which == 'snli':
+            fns = []
+            for split in ('train', 'dev', 'test'):
+                path = os.path.join('data', 'snli_data', 'snli_1.0', 'snli_1.0_' + split + '.jsonl')
+                fns.append(path)
+        elif which == 'mnli':
+            fns = []
+            for split in ('train', 'dev_matched', 'dev_mismatched'):
+                path = os.path.join('data', 'mnli_data', 'multinli_1.0', 'multinli_1.0_' + split + '.jsonl')
+                fns.append(path)
+        
+        # define some control symbols
+        if use_control:
+            self.cls = control_symbols['cls']
+            self.statement_sep = control_symbols['statement_sep']
+            self.end = control_symbols['end']
+        else:
+            self.cls = ''
+            self.statement_sep = ''
+            self.end = ''
+        
+        self.examples = []
+        self.entailments = []
+        self.contradictions = []
+
+        for fn in fns:
+                
+            jsons = load_jsonl(fn)
+            
+            for j in jsons:
+                gold_label = j['gold_label']
+                pair_id = j['pairID']
+                sentence1 = j['sentence1']
+                sentence2 = j['sentence2']
+                
+                if gold_label in ('neutral', '-'):
+                    continue
+                
+                assert gold_label in ('entailment', 'contradiction')
+                assert pair_id != ''
+                assert sentence1 != ''
+                assert sentence2 != ''
+                
+                if gold_label == 'entailment':
+                    example = NLIDataItem(pair_id, sentence1, sentence2, 0)
+                    self.entailments.append(example)
+                else:
+                    example = NLIDataItem(pair_id, sentence1, sentence2, 1)
+                    self.contradictions.append(example)
+
+                self.examples.append(example)
+                
+    def process_item(self, item):
+        s = self.cls + item.sentence1 + self.statement_sep + item.sentence2 + self.end
+        return s, item.label, item
+    
+    def __getitem__(self, idx):
+        
+        item = self.examples[idx] # get the whole data item(s)
+        
+        # slice
+        if type(item) == list:
+            return [self.process_item(x) for x in item]
+        else:
+            return self.process_item(item)
+    
+    def __len__(self):
+        return len(self.examples)
 
 """Returns the desired dataset split.
 
@@ -232,7 +352,6 @@ class ClinicalDataset(Dataset):
         
     Raises:
         ValueError: If s is not 'train', 'dev', or 'test'.
-
 """
 def get_data(
         s='train',
@@ -242,17 +361,23 @@ def get_data(
         mix            = False,
         use_indices    = False
     ):
-    try:
-        return ClinicalDataset(
-            os.path.join(jsons_path, s + '.json'),
-            use_control    = use_control,
-            flatten        = flatten,
-            shuf           = shuf,
-            mix            = mix,
-            use_indices    = use_indices
-        )
-    except:
-        raise ValueError('Must be one of "train", "dev", or "test".')
+    
+    if s == 'mnli':
+        return NLIDataset(which='mnli', use_control=use_control)
+    elif s == 'snli':
+        return NLIDataset(which='snli', use_control=use_control)
+    else:
+        try:
+            return ClinicalDataset(
+                os.path.join(clin_jsons_path, s + '.json'),
+                use_control    = use_control,
+                flatten        = flatten,
+                shuf           = shuf,
+                mix            = mix,
+                use_indices    = use_indices
+            )
+        except:
+            raise ValueError('Must be one of "train", "dev", "test", "snli", or "mnli".')
 
 """The main script can be run to ensure data wrangling has been done.
 
@@ -260,7 +385,7 @@ Raises:
     FileNotFoundError: Throws this error if the data wrangling has not been done properly.
 """
 if __name__ == '__main__':
-    if not os.path.exists(jsons_path):
+    if not os.path.exists(clin_jsons_path):
         raise FileNotFoundError('training_data folder not found. Run fetch_task.py first.')
     else:
         print('training_data folder found.')
