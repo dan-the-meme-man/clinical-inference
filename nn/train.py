@@ -4,7 +4,6 @@ sys.path.append('.')
 from random import shuffle, seed
 
 import torch
-import sentencepiece as spm
 import matplotlib.pyplot as plt
 
 # control symbols
@@ -47,7 +46,7 @@ def train_batch(model, batch, optimizer, criterion, device, update):
     
     # tokenize input
     for item in batch:
-        indices.append(model.sp.EncodeAsIds(item[0]))
+        indices.append(model.sp.EncodeAsIds(item[0].strip()))
         labels.append(item[1])
     
     # pad inputs to max length
@@ -125,6 +124,7 @@ def main():
     log_msg(f'Optimizer: {optimizer}\n', param_str)
    
     # retrieve data
+    pretrain_dataset = get_data('mnli', use_control=False) + get_data('snli', use_control=False)
     train_dataset = get_data(
         'train',
         use_control=False,
@@ -143,8 +143,10 @@ def main():
     )
 
     # ensure correct counts: 1700 train, 200 dev
-    log_msg(f'Loaded {len(train_dataset)} training examples.', param_str)
-    log_msg(f'Loaded {len(dev_dataset)} dev examples.', param_str)
+    log_msg(f'Loaded {len(pretrain_dataset)} MNLI/SNLI examples.', param_str)
+    log_msg(f'Loaded {len(train_dataset)} clinical training examples.', param_str)
+    log_msg(f'Total: {len(train_dataset)} training examples.', param_str)
+    log_msg(f'Loaded {len(dev_dataset)} clinical dev examples.', param_str)
     
     # initialize shuffle seed
     seed(42)
@@ -157,16 +159,60 @@ def main():
     for e in range(epochs):
         
         # shuffle data
-        shuffle(train_dataset.examples)
-        shuffle(dev_dataset.examples)
+        shuffle(pretrain_dataset)
+        shuffle(train_dataset)
+        shuffle(dev_dataset)
         
+        num_pretrain_batches = len(pretrain_dataset) // batch_size
         num_train_batches = len(train_dataset) // batch_size
         num_dev_batches = len(dev_dataset) // batch_size
         
         log_msg(f'Begin epoch {e+1}/{epochs}.\n', param_str)
+        model.train()
+        
+        ################################ PRETRAIN #################################
+        
+        # loop over batches
+        for i in range(num_pretrain_batches):
+            
+            # get batch
+            batch = pretrain_dataset[i * batch_size : (i+1) * batch_size]
+            
+            # train the model on the batch, record the loss
+            train_losses.append(
+                train_batch(
+                    model,
+                    batch,
+                    optimizer,
+                    criterion,
+                    device,
+                    update=True
+                )
+            )
+            
+            # print progress
+            msg = f'Batch {i + 1}/{num_pretrain_batches} loss: {train_losses[-1]:8.4f}.'
+            msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
+            log_msg(msg, param_str)
+            
+        # dump rest of data into a batch if there is any
+        batch = pretrain_dataset[(i+1) * batch_size - 1 : -1]
+        if len(batch) > 0:
+            train_losses.append(
+                train_batch(
+                    model,
+                    batch,
+                    optimizer,
+                    criterion,
+                    device,
+                    update=True
+                )
+            )
+            msg = f'Remainder batch loss: {train_losses[-1]:8.4f}.'
+            msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
+            log_msg(msg, param_str)
         
         ################################## TRAIN ##################################
-        model.train()
         
         # loop over batches
         for i in range(num_train_batches):

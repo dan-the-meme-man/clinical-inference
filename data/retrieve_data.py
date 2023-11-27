@@ -269,23 +269,24 @@ class ClinicalDataset(Dataset):
     Functions:
         __len__(): Returns the number of examples.
         __getitem__(idx): Returns the example at index idx.
+        process_item(item): Helper function for __getitem__().
 """
 class NLIDataset(Dataset):
     def __init__(self, which='snli', use_control=True):
         
+        fns = []
         if which == 'snli':
-            fns = []
             for split in ('train', 'dev', 'test'):
                 path = os.path.join('data', 'snli_data', 'snli_1.0', 'snli_1.0_' + split + '.jsonl')
                 fns.append(path)
         elif which == 'mnli':
-            fns = []
             for split in ('train', 'dev_matched', 'dev_mismatched'):
                 path = os.path.join('data', 'mnli_data', 'multinli_1.0', 'multinli_1.0_' + split + '.jsonl')
                 fns.append(path)
         
         # define some control symbols
-        if use_control:
+        self.use_control = use_control
+        if self.use_control:
             self.cls = control_symbols['cls']
             self.statement_sep = control_symbols['statement_sep']
             self.end = control_symbols['end']
@@ -298,24 +299,21 @@ class NLIDataset(Dataset):
         self.entailments = []
         self.contradictions = []
 
-        for fn in fns:
+        for fn in fns: # for each file containing data
                 
-            jsons = load_jsonl(fn)
+            jsons = load_jsonl(fn) # load line by line
             
-            for j in jsons:
+            for j in jsons: # extract information
                 gold_label = j['gold_label']
                 pair_id = j['pairID']
                 sentence1 = j['sentence1']
                 sentence2 = j['sentence2']
                 
+                # skip if neutral or -
                 if gold_label in ('neutral', '-'):
                     continue
                 
-                assert gold_label in ('entailment', 'contradiction')
-                assert pair_id != ''
-                assert sentence1 != ''
-                assert sentence2 != ''
-                
+                # make example
                 if gold_label == 'entailment':
                     example = NLIDataItem(pair_id, sentence1, sentence2, 0)
                     self.entailments.append(example)
@@ -323,10 +321,16 @@ class NLIDataset(Dataset):
                     example = NLIDataItem(pair_id, sentence1, sentence2, 1)
                     self.contradictions.append(example)
 
+                # add to examples
                 self.examples.append(example)
-                
+    
+    # helper for __getitem__
     def process_item(self, item):
-        s = self.cls + item.sentence1 + self.statement_sep + item.sentence2 + self.end
+        if self.statement_sep == '':
+            sep = ' '
+        else:
+            sep = ' ' + self.statement_sep + ' '
+        s = self.cls + item.sentence1 + sep + item.sentence2 + self.end
         return s, item.label, item
     
     def __getitem__(self, idx):
@@ -341,6 +345,19 @@ class NLIDataset(Dataset):
     
     def __len__(self):
         return len(self.examples)
+    
+    # combinable with other datasets
+    def __add__(self, other):
+        if isinstance(other, NLIDataset):
+            # Perform custom addition and return a new instance
+            ret = NLIDataset(which=None, use_control=self.use_control)
+            ret.contradictions = self.contradictions + other.contradictions
+            ret.entailments = self.entailments + other.entailments
+            ret.examples = self.examples + other.examples
+            return ret
+        else:
+            # If the other object is of a different type, handle it accordingly
+            raise TypeError("Unsupported operand type. Cannot add CustomObject with {}".format(type(other)))
 
 """Returns the desired dataset split.
 
@@ -392,4 +409,17 @@ if __name__ == '__main__':
     if not os.path.exists(CT_path):
         raise FileNotFoundError('CT_dict.json not found. Run serialize_cts.py first.')
     else:
-        print('CT_dict.json found. You may safely build vocab.')
+        print('CT_dict.json found.')
+    for split in ('train', 'dev_matched', 'dev_mismatched'):
+        path = os.path.join('data', 'mnli_data', 'multinli_1.0', 'multinli_1.0_' + split + '.jsonl')
+        if not os.path.exists(path):
+            raise FileNotFoundError(path + ' not found. Run fetch_open_domain.py first.')
+        else:
+            print('multinli_1.0_' + split + '.jsonl' + ' found.')
+    for split in ('train', 'dev', 'test'):
+        path = os.path.join('data', 'snli_data', 'snli_1.0', 'snli_1.0_' + split + '.jsonl')
+        if not os.path.exists(path):
+            raise FileNotFoundError(path + ' not found. Run fetch_open_domain.py first.')
+        else:
+            print('snli_1.0_' + split + '.jsonl' + ' found.')
+    print('You may safely build vocab.txt.')
