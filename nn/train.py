@@ -159,9 +159,9 @@ def main():
     for e in range(epochs):
         
         # shuffle data
-        shuffle(pretrain_dataset)
-        shuffle(train_dataset)
-        shuffle(dev_dataset)
+        shuffle(pretrain_dataset.examples)
+        shuffle(train_dataset.examples)
+        shuffle(dev_dataset.examples)
         
         num_pretrain_batches = len(pretrain_dataset) // batch_size
         num_train_batches = len(train_dataset) // batch_size

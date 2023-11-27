@@ -16,7 +16,7 @@ params = ''
 params += ' --input=' + ','.join(train_texts) # texts to read
 params += ' --model_prefix=' + os.path.join('vocab', 'spm') # output files
 
-params +=  ' --vocab_size=9200' # default: 8000
+params +=  ' --vocab_size=20000' # default: 8000
 
 params += ' --character_coverage=1.0' # default: 0.9995
 
