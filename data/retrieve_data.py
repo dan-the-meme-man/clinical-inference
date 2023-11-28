@@ -110,11 +110,15 @@ class NLIDataItem():
 class ClinicalDataset(Dataset):
     def __init__(self,
                  file_path,
+                 shuffle_items  = True,
                  use_control    = True,
                  flatten        = True,
                  shuf           = False,
                  mix            = False,
                  use_indices    = False):
+        
+        # shuffle
+        self.shuffle_items = shuffle_items
         
         # define some control symbols
         if use_control:
@@ -202,6 +206,9 @@ class ClinicalDataset(Dataset):
         # flatten categories to make indexing easier
         self.examples = self.single_contradiction + self.single_entailment
         self.examples += self.comparison_contradiction + self.comparison_entailment
+        
+        if self.shuffle_items:
+            shuffle(self.examples)
 
     def process_item(self, item):
 
@@ -272,7 +279,9 @@ class ClinicalDataset(Dataset):
         process_item(item): Helper function for __getitem__().
 """
 class NLIDataset(Dataset):
-    def __init__(self, which='snli', use_control=True):
+    def __init__(self, shuffle_items=True, which='snli', use_control=True):
+        
+        self.shuffle_items = shuffle_items
         
         fns = []
         if which == 'snli':
@@ -323,6 +332,9 @@ class NLIDataset(Dataset):
 
                 # add to examples
                 self.examples.append(example)
+        
+        if self.shuffle_items:
+            shuffle(self.examples)
     
     # helper for __getitem__
     def process_item(self, item):
@@ -372,6 +384,7 @@ class NLIDataset(Dataset):
 """
 def get_data(
         s='train',
+        shuffle_items  = True,
         use_control    = True,
         flatten        = True,
         shuf           = False,
@@ -380,13 +393,14 @@ def get_data(
     ):
     
     if s == 'mnli':
-        return NLIDataset(which='mnli', use_control=use_control)
+        return NLIDataset(which='mnli', shuffle_items=shuffle_items, use_control=use_control)
     elif s == 'snli':
-        return NLIDataset(which='snli', use_control=use_control)
+        return NLIDataset(which='snli', shuffle_items=shuffle_items, use_control=use_control)
     else:
         try:
             return ClinicalDataset(
                 os.path.join(clin_jsons_path, s + '.json'),
+                shuffle_items  = shuffle_items,
                 use_control    = use_control,
                 flatten        = flatten,
                 shuf           = shuf,

@@ -92,7 +92,7 @@ def main():
         'nhead': 8 if not overfit else 2,
         'dim_feedforward': 512 if not overfit else 64,
         'embed_dim': 256 if not overfit else 32,
-        'dropout': 0.1,
+        'dropout': 0.1 if not overfit else 0.0,
         'activation': 'relu',
         'max_length': 2400
     }
@@ -129,9 +129,10 @@ def main():
    
     # retrieve data
     if not overfit:
-        pretrain_dataset = get_data('mnli', use_control=False) + get_data('snli', use_control=False)
+        pretrain_dataset = get_data('mnli', shuffle_items=True, use_control=False) + get_data('snli', use_control=False)
         train_dataset = get_data(
             'train',
+            shuffle_items=True,
             use_control=False,
             flatten=True,
             shuf=True,
@@ -150,6 +151,7 @@ def main():
         pretrain_dataset = []
         train_dataset = get_data(
             'train',
+            shuffle_items=True,
             use_control=False,
             flatten=True,
             shuf=True,
@@ -159,6 +161,8 @@ def main():
         dev_dataset = train_dataset
         batch_size = 1
         epochs = 100
+        for item in train_dataset:
+            print(item)
 
     # ensure correct counts: 1700 train, 200 dev
     log_msg(f'Loaded {len(pretrain_dataset)} MNLI/SNLI examples.', param_str)
@@ -169,6 +173,7 @@ def main():
     seed(42)
 
     # for plotting
+    pretrain_losses = []
     train_losses = []
     dev_losses = []
     
@@ -197,7 +202,7 @@ def main():
                 batch = pretrain_dataset[i * batch_size : (i+1) * batch_size]
                 
                 # train the model on the batch, record the loss
-                train_losses.append(
+                pretrain_losses.append(
                     train_batch(
                         model,
                         batch,
@@ -209,14 +214,14 @@ def main():
                 )
                 
                 # print progress
-                msg = f'Batch {(i + 1):6}/{num_pretrain_batches} loss: {train_losses[-1]:8.4f}.'
-                msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
+                msg = f'Batch {(i + 1):6}/{num_pretrain_batches} loss: {pretrain_losses[-1]:8.4f}.'
+                msg += f' Average loss: {sum(pretrain_losses)/len(pretrain_losses):8.4f}.\n'
                 log_msg(msg, param_str)
                 
             # dump rest of data into a batch if there is any
             batch = pretrain_dataset[(i+1) * batch_size - 1 : -1]
             if len(batch) > 0:
-                train_losses.append(
+                pretrain_losses.append(
                     train_batch(
                         model,
                         batch,
@@ -226,8 +231,8 @@ def main():
                         update=True
                     )
                 )
-                msg = f'Remainder batch loss: {train_losses[-1]:8.4f}.'
-                msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
+                msg = f'Remainder batch loss: {pretrain_losses[-1]:8.4f}.'
+                msg += f' Average loss: {sum(pretrain_losses)/len(pretrain_losses):8.4f}.\n'
                 log_msg(msg, param_str)
         
         ################################## TRAIN ##################################
@@ -329,8 +334,10 @@ def main():
         os.mkdir(plots_dir)
     plt.figure()
     plt.subplot(1, 2, 1)
-    plt.scatter(list(range(len(train_losses))), train_losses, label='train', s=2, c='blue')
+    plt.scatter(list(range(len(pretrain_losses))), pretrain_losses, label='pretrain', s=2, c='blue')
     plt.subplot(1, 2, 2)
+    plt.scatter(list(range(len(train_losses))), train_losses, label='train', s=2, c='blue')
+    plt.subplot(1, 2, 3)
     plt.scatter(list(range(len(dev_losses))), dev_losses, label='dev', s=2, c='orange')
     plt.legend()
     plt.grid()
