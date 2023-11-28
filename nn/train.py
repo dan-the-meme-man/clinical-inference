@@ -16,7 +16,7 @@ from data.retrieve_data import get_data
 from torch_nn import *
 
 # FOR DEBUGGING
-overfit = True
+overfit = False
 
 """Logs a message to the console and to a file.
         
