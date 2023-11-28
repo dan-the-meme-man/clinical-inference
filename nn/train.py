@@ -15,6 +15,9 @@ from data.retrieve_data import get_data
 # model architecture
 from torch_nn import *
 
+# FOR DEBUGGING
+overfit = True
+
 """Logs a message to the console and to a file.
         
     Attributes:
@@ -124,28 +127,42 @@ def main():
     log_msg(f'Optimizer: {optimizer}\n', param_str)
    
     # retrieve data
-    pretrain_dataset = get_data('mnli', use_control=False) + get_data('snli', use_control=False)
-    train_dataset = get_data(
-        'train',
-        use_control=False,
-        flatten=True,
-        shuf=True,
-        mix=False,
-        use_indices=False
-    )
-    dev_dataset = get_data(
-        'dev',
-        use_control=False,
-        flatten=True,
-        shuf=False,
-        mix=False,
-        use_indices=False
-    )
+    if not overfit:
+        pretrain_dataset = get_data('mnli', use_control=False) + get_data('snli', use_control=False)
+        train_dataset = get_data(
+            'train',
+            use_control=False,
+            flatten=True,
+            shuf=True,
+            mix=False,
+            use_indices=False
+        )
+        dev_dataset = get_data(
+            'dev',
+            use_control=False,
+            flatten=True,
+            shuf=False,
+            mix=False,
+            use_indices=False
+        )
+    else:
+        pretrain_dataset = []
+        train_dataset = get_data(
+            'train',
+            use_control=False,
+            flatten=True,
+            shuf=True,
+            mix=False,
+            use_indices=False
+        )[:10]
+        dev_dataset = train_dataset
+        batch_size = 1
+        epochs = 100
+        print(train_dataset)
 
     # ensure correct counts: 1700 train, 200 dev
     log_msg(f'Loaded {len(pretrain_dataset)} MNLI/SNLI examples.', param_str)
     log_msg(f'Loaded {len(train_dataset)} clinical training examples.', param_str)
-    log_msg(f'Total: {len(train_dataset)} training examples.', param_str)
     log_msg(f'Loaded {len(dev_dataset)} clinical dev examples.', param_str)
     
     # initialize shuffle seed
@@ -159,9 +176,9 @@ def main():
     for e in range(epochs):
         
         # shuffle data
-        shuffle(pretrain_dataset.examples)
-        shuffle(train_dataset.examples)
-        shuffle(dev_dataset.examples)
+        #shuffle(pretrain_dataset.examples)
+        #shuffle(train_dataset.examples)
+        #shuffle(dev_dataset.examples)
         
         num_pretrain_batches = len(pretrain_dataset) // batch_size
         num_train_batches = len(train_dataset) // batch_size
@@ -172,45 +189,47 @@ def main():
         
         ################################ PRETRAIN #################################
         
-        # loop over batches
-        for i in range(num_pretrain_batches):
-            
-            # get batch
-            batch = pretrain_dataset[i * batch_size : (i+1) * batch_size]
-            
-            # train the model on the batch, record the loss
-            train_losses.append(
-                train_batch(
-                    model,
-                    batch,
-                    optimizer,
-                    criterion,
-                    device,
-                    update=True
+        if not overfit:
+            # loop over batches
+            for i in range(num_pretrain_batches):
+                
+                # get batch
+                batch = pretrain_dataset[i * batch_size : (i+1) * batch_size]
+                
+                # train the model on the batch, record the loss
+                train_losses.append(
+                    train_batch(
+                        model,
+                        batch,
+                        optimizer,
+                        criterion,
+                        device,
+                        update=True
+                    )
                 )
-            )
-            
-            # print progress
-            msg = f'Batch {i + 1}/{num_pretrain_batches} loss: {train_losses[-1]:8.4f}.'
-            msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
-            log_msg(msg, param_str)
-            
-        # dump rest of data into a batch if there is any
-        batch = pretrain_dataset[(i+1) * batch_size - 1 : -1]
-        if len(batch) > 0:
-            train_losses.append(
-                train_batch(
-                    model,
-                    batch,
-                    optimizer,
-                    criterion,
-                    device,
-                    update=True
+                
+                # print progress
+                msg = f'Batch {(i + 1):6}/{num_pretrain_batches} loss: {train_losses[-1]:8.4f}.'
+                msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
+                log_msg(msg, param_str)
+                print(len(train_losses))
+                
+            # dump rest of data into a batch if there is any
+            batch = pretrain_dataset[(i+1) * batch_size - 1 : -1]
+            if len(batch) > 0:
+                train_losses.append(
+                    train_batch(
+                        model,
+                        batch,
+                        optimizer,
+                        criterion,
+                        device,
+                        update=True
+                    )
                 )
-            )
-            msg = f'Remainder batch loss: {train_losses[-1]:8.4f}.'
-            msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
-            log_msg(msg, param_str)
+                msg = f'Remainder batch loss: {train_losses[-1]:8.4f}.'
+                msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
+                log_msg(msg, param_str)
         
         ################################## TRAIN ##################################
         
@@ -233,7 +252,7 @@ def main():
             )
             
             # print progress
-            msg = f'Batch {i + 1}/{num_train_batches} loss: {train_losses[-1]:8.4f}.'
+            msg = f'Batch {(i + 1):6}/{num_train_batches} loss: {train_losses[-1]:8.4f}.'
             msg += f' Average loss: {sum(train_losses)/len(train_losses):8.4f}.\n'
             log_msg(msg, param_str)
             
@@ -278,7 +297,7 @@ def main():
             )
             
             # print progress
-            msg = f'Batch {i + 1}/{num_dev_batches} loss: {dev_losses[-1]:8.4f}.'
+            msg = f'Batch {(i + 1):6}/{num_dev_batches} loss: {dev_losses[-1]:8.4f}.'
             msg += f' Average loss: {sum(dev_losses)/len(dev_losses):8.4f}.\n'
             log_msg(msg, param_str)
             
