@@ -87,11 +87,11 @@ def main():
     
     ### MODEL HYPERPARAMETERS ###
     specs = {
-        'd_model': 256,
-        'num_layers': 6,
-        'nhead': 8,
-        'dim_feedforward': 512,
-        'embed_dim': 256,
+        'd_model': 256 if not overfit else 32,
+        'num_layers': 6 if not overfit else 2,
+        'nhead': 8 if not overfit else 2,
+        'dim_feedforward': 512 if not overfit else 64,
+        'embed_dim': 256 if not overfit else 32,
         'dropout': 0.1,
         'activation': 'relu',
         'max_length': 2400
