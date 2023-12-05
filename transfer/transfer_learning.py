@@ -336,7 +336,7 @@ def evaluate(model, val_dataloader):
 
 set_seed(42)    # Set seed for reproducibility
 bert_classifier, optimizer, scheduler = initialize_model(epochs=EPOCH)
-train(bert_classifier, train_dataloader, train_dataloader, epochs=EPOCH, evaluation=True)
+train(bert_classifier, train_dataloader, dev_dataloader, epochs=EPOCH, evaluation=True)
 
 
 def bert_predict(model, test_dataloader):
@@ -386,10 +386,10 @@ bert_classifier.to(device)  # Move model to the right device
 bert_classifier.eval()  # Set the model to evaluation mode for predictionsptimizer.load_state_dict(checkpoint['optimizer_state_dict']t
 
 
-pred = bert_predict(bert_classifier, train_dataloader)
+pred = bert_predict(bert_classifier, dev_dataloader)
 print(pred)
-print(train_labels)
-final_report = classification_report(train_labels, pred, target_names=['Contradiction', 'Entailment'])
+print(dev_labels)
+final_report = classification_report(dev_labels, pred, target_names=['Contradiction', 'Entailment'])
 print(final_report)
 with open('report_bert.txt', 'a') as report:
     report.write(final_report)
