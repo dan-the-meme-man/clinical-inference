@@ -16,7 +16,7 @@ model = AutoModelForCausalLM.from_pretrained("EleutherAI/gpt-j-6B")
 def preprocess_data(text_list):
     processed_text =''
     for text in text_list:
-        if text.split()[0].isupper():
+        if text.split() and text.split()[0].isupper():
             continue
         pattern = r'[\u0000-\u001f\u007f-\u009f]'
         # Replace the matched characters with an empty string
