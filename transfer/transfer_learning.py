@@ -378,14 +378,14 @@ torch.save({
     # Include other necessary items like epoch number, loss, etc.
 }, model_save_path)
 model_load_path = "bert.pth"
-checkpoint = torch.load(model_load_path)
-
+checkpoint = torch.load(model_load_path, map_location=device)
 # Apply the saved states
-model.load_state_dict(checkpoint['model_state_dict'])
-optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+bert_classifier.load_state_dict(checkpoint['model_state_dict'])
+bert_classifier.to(device)  # Move model to the right device
+bert_classifier.eval()  # Set the model to evaluation mode for predictionsptimizer.load_state_dict(checkpoint['optimizer_state_dict']t
 
 
-pred = bert_predict(checkpoint, train_dataloader)
+pred = bert_predict(bert_classifier, train_dataloader)
 print(pred)
 print(train_labels)
 final_report = classification_report(train_labels, pred, target_names=['Contradiction', 'Entailment'])
