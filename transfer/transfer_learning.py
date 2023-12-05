@@ -355,6 +355,7 @@ def bert_predict(model, test_dataloader):
     all_logits = torch.cat(all_logits, dim=0)
     # Apply softmax to calculate probabilities
     probs = F.softmax(all_logits, dim=1).cpu().numpy()
+    print(probs)
     predictions = np.argmax(probs, axis=1).tolist()
 
 
