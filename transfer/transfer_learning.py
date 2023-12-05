@@ -17,7 +17,7 @@ model =BertModel.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-ab
 
 MAX_LEN=512 # don't change
 SAVE_PATH = 'models/'
-EPOCH = 10
+EPOCH = 20
 HIDDEN_SIZE=100
 LEARNING_RATE = 5e-5
 BS = 16
@@ -59,8 +59,8 @@ def data_preprocess(data):
                 secondary_text = ''
                 text_type = 'single'
                 input = f'Text type: {text_type} Primary text: {primary_text} Statement: {statement}'
-            if i>20:
-                break
+            #if i>20:
+               # break
             label = label_num_pair[f['label']]
             inputs.append(input)
             labels.append(label)
@@ -357,6 +357,7 @@ def bert_predict(model, test_dataloader):
     all_logits = torch.cat(all_logits, dim=0)
     # Apply softmax to calculate probabilities
     probs = torch.sigmoid(all_logits).cpu().numpy()
+    print(probs)
 
     # Convert probabilities to binary predictions (0 or 1)
     predictions = (probs > 0.5).astype(int).flatten()  # Threshold is 0.5
@@ -373,7 +374,7 @@ model_save_path = "bert.pth"
 
 # Save the model state and optimizer state
 torch.save({
-    'model_state_dict': model.state_dict(),
+    'model_state_dict': bert_classifier.state_dict(),
     'optimizer_state_dict': optimizer.state_dict(),
     # Include other necessary items like epoch number, loss, etc.
 }, model_save_path)
