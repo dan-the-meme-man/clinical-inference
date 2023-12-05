@@ -319,10 +319,12 @@ def evaluate(model, val_dataloader):
         val_loss.append(loss.item())
 
         # Get the predictions
-        preds = torch.argmax(logits, dim=1).flatten()
+        probs = torch.sigmoid(logits).cpu().numpy()
 
+        # Convert probabilities to binary predictions (0 or 1)
+        preds = (probs > 0.5).astype(int).flatten()
         # Calculate the accuracy rate
-        accuracy = (preds == b_labels).cpu().numpy().mean() * 100
+        accuracy = (preds == b_labels.cpu().numpy()).mean() * 100
         val_accuracy.append(accuracy)
 
     # Compute the average accuracy and loss over the validation set.
@@ -366,7 +368,24 @@ def bert_predict(model, test_dataloader):
     # predictions = torch.argmax(all_logits, dim=1).flatten()
     return predictions
 
-pred = bert_predict(bert_classifier, train_dataloader)
+# Assuming 'model' is your model instance and 'optimizer' is your optimizer instance
+model_save_path = "bert.pth"
+
+# Save the model state and optimizer state
+torch.save({
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict(),
+    # Include other necessary items like epoch number, loss, etc.
+}, model_save_path)
+model_load_path = "bert.pth"
+checkpoint = torch.load(model_load_path)
+
+# Apply the saved states
+model.load_state_dict(checkpoint['model_state_dict'])
+optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+
+pred = bert_predict(checkpoint, train_dataloader)
 print(pred)
 print(train_labels)
 final_report = classification_report(train_labels, pred, target_names=['Contradiction', 'Entailment'])
