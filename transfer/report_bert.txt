@@ -102,3 +102,19 @@ Contradiction       0.56      0.56      0.56         9
      accuracy                           0.62        21
     macro avg       0.61      0.61      0.61        21
  weighted avg       0.62      0.62      0.62        21
+               precision    recall  f1-score   support
+
+Contradiction       0.60      0.60      0.60        15
+   Entailment       0.00      0.00      0.00         6
+
+     accuracy                           0.43        21
+    macro avg       0.30      0.30      0.30        21
+ weighted avg       0.43      0.43      0.43        21
+               precision    recall  f1-score   support
+
+Contradiction       0.40      0.40      0.40        10
+   Entailment       0.45      0.45      0.45        11
+
+     accuracy                           0.43        21
+    macro avg       0.43      0.43      0.43        21
+ weighted avg       0.43      0.43      0.43        21

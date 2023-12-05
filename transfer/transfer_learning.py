@@ -26,7 +26,7 @@ else:
 
 MAX_LEN=512 # don't change
 SAVE_PATH = 'models/'
-EPOCH = 100
+EPOCH = 10
 HIDDEN_SIZE=100
 LEARNING_RATE = 5e-5
 
@@ -140,7 +140,7 @@ class BertClassifier(nn.Module):
         """
         super(BertClassifier, self).__init__()
         # Specify hidden size of BERT, hidden size of our classifier, and number of labels
-        D_in, H, D_out = 768, HIDDEN_SIZE, 1
+        D_in, H, D_out = 768, HIDDEN_SIZE, 2
 
         # Instantiate BERT model
         self.model = model
@@ -429,7 +429,7 @@ def evaluate(model, val_dataloader):
 
 set_seed(42)    # Set seed for reproducibility
 bert_classifier, optimizer, scheduler = initialize_model(epochs=EPOCH)
-train(bert_classifier, train_dataloader, dev_dataloader, epochs=EPOCH, evaluation=True)
+train(bert_classifier, train_dataloader, train_dataloader, epochs=EPOCH, evaluation=True)
 
 
 def bert_predict(model, test_dataloader):
@@ -450,7 +450,7 @@ def bert_predict(model, test_dataloader):
     all_logits = torch.cat(all_logits, dim=0)
     # Apply softmax to calculate probabilities
     probs = F.softmax(all_logits, dim=1).cpu().numpy()
-    predictions = [-1 if x < 0 else 1 for x in probs]
+    predictions = np.argmax(probs, axis=1).tolist()
 
 
     return predictions
