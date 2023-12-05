@@ -352,6 +352,7 @@ def bert_predict(model, test_dataloader):
             logits = model(b_input_ids, b_attn_mask)
             all_logits.append(logits)
             # Concatenate logits from each batch
+<<<<<<< HEAD
     all_logits = torch.cat(all_logits, dim=0)
     # Apply softmax to calculate probabilities
     probs = F.softmax(all_logits, dim=1).cpu().numpy()
@@ -359,6 +360,13 @@ def bert_predict(model, test_dataloader):
     predictions = np.argmax(probs, axis=1).tolist()
 
 
+=======
+    # all_logits = torch.cat(all_logits, dim=0)
+    # # Apply softmax to calculate probabilities
+    # probs = F.softmax(all_logits, dim=1).cpu().numpy()
+    # predictions = np.argmax(probs, axis=1).tolist()
+    predictions = torch.argmax(all_logits, dim=1).flatten()
+>>>>>>> 092dad183354bf6ed3f092eadb4122d5654e8945
     return predictions
 
 pred = bert_predict(bert_classifier, train_dataloader)
