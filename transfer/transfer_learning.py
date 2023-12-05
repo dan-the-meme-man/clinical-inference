@@ -15,8 +15,9 @@ from sklearn.metrics import classification_report
 tokenizer = AutoTokenizer.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
 model =BertModel.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
 
+MODEL_SAVE_PATH = "bert.pth"
 MAX_LEN=512 # don't change
-SAVE_PATH = 'models/'
+loss_fn = nn.BCEWithLogitsLoss()  # don't change
 EPOCH = 20
 HIDDEN_SIZE=100
 LEARNING_RATE = 5e-5
@@ -36,11 +37,6 @@ else:
 
 def preprocess(text):
   return text
-
-label_num_pair = {"Entailment":0, "Contradiction":1}
-
-
-
 
 def data_preprocess(data):
     inputs = []
@@ -65,10 +61,6 @@ def data_preprocess(data):
             inputs.append(input)
             labels.append(label)
     return inputs, labels
-
-
-train_input, train_labels = data_preprocess('train_data.json')
-dev_input, dev_labels = data_preprocess('dev_data.json')
 
 
 def preprocessing_for_bert(input):
@@ -111,26 +103,6 @@ def preprocessing_for_bert(input):
     attention_masks = torch.tensor(attention_masks)
 
     return input_ids, attention_masks
-
-train_input_ids, train_attention_masks = preprocessing_for_bert(train_input)
-dev_input_ids, dev_attention_masks = preprocessing_for_bert(dev_input)
-
-
-# Convert other data types to torch.Tensor
-train_labels_ID = torch.tensor(train_labels)
-dev_labels_ID = torch.tensor(dev_labels)
-
-
-# Create the DataLoader for our training set
-train_data = TensorDataset(train_input_ids, train_attention_masks, train_labels_ID)
-train_sampler = RandomSampler(train_data)
-train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=BS)
-
-# Create the DataLoader for our validation set
-dev_data = TensorDataset(dev_input_ids, dev_attention_masks, dev_labels_ID)
-dev_sampler = SequentialSampler(dev_data)
-dev_dataloader = DataLoader(dev_data, sampler=dev_sampler, batch_size=BS)
-
 
 class BertClassifier(nn.Module):
     def __init__(self, model):
@@ -194,10 +166,6 @@ def initialize_model(epochs=EPOCH):
                                                 num_warmup_steps=0, # Default value
                                                 num_training_steps=total_steps)
     return bert_classifier, optimizer, scheduler
-
-
-# Specify loss function
-loss_fn = nn.BCEWithLogitsLoss()
 
 def set_seed(seed_value=42):
   random.seed(seed_value)
@@ -334,9 +302,6 @@ def evaluate(model, val_dataloader):
     return val_loss, val_accuracy
 
 
-set_seed(42)    # Set seed for reproducibility
-bert_classifier, optimizer, scheduler = initialize_model(epochs=EPOCH)
-train(bert_classifier, train_dataloader, dev_dataloader, epochs=EPOCH, evaluation=True)
 
 
 def bert_predict(model, test_dataloader):
@@ -369,27 +334,52 @@ def bert_predict(model, test_dataloader):
     # predictions = torch.argmax(all_logits, dim=1).flatten()
     return predictions
 
-# Assuming 'model' is your model instance and 'optimizer' is your optimizer instance
-model_save_path = "bert.pth"
+if __name__=='__main__':
+    set_seed(42)
+    # prepare data
+    label_num_pair = {"Entailment":0, "Contradiction":1}
+    train_input, train_labels = data_preprocess('train_data.json')
+    dev_input, dev_labels = data_preprocess('dev_data.json')
 
-# Save the model state and optimizer state
-torch.save({
-    'model_state_dict': bert_classifier.state_dict(),
-    'optimizer_state_dict': optimizer.state_dict(),
-    # Include other necessary items like epoch number, loss, etc.
-}, model_save_path)
-model_load_path = "bert.pth"
-checkpoint = torch.load(model_load_path, map_location=device)
-# Apply the saved states
-bert_classifier.load_state_dict(checkpoint['model_state_dict'])
-bert_classifier.to(device)  # Move model to the right device
-bert_classifier.eval()  # Set the model to evaluation mode for predictionsptimizer.load_state_dict(checkpoint['optimizer_state_dict']t
+    train_input_ids, train_attention_masks = preprocessing_for_bert(train_input)
+    dev_input_ids, dev_attention_masks = preprocessing_for_bert(dev_input)
+
+    # Convert other data types to torch.Tensor
+    train_labels_ID = torch.tensor(train_labels)
+    dev_labels_ID = torch.tensor(dev_labels)
 
 
-pred = bert_predict(bert_classifier, dev_dataloader)
-print(pred)
-print(dev_labels)
-final_report = classification_report(dev_labels, pred, target_names=['Contradiction', 'Entailment'])
-print(final_report)
-with open('report_bert.txt', 'a') as report:
-    report.write(final_report)
+    # Create the DataLoader for our training set
+    train_data = TensorDataset(train_input_ids, train_attention_masks, train_labels_ID)
+    train_sampler = RandomSampler(train_data)
+    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=BS)
+
+    # Create the DataLoader for our validation set
+    dev_data = TensorDataset(dev_input_ids, dev_attention_masks, dev_labels_ID)
+    dev_sampler = SequentialSampler(dev_data)
+    dev_dataloader = DataLoader(dev_data, sampler=dev_sampler, batch_size=BS)
+
+    # initialize and train the model
+    bert_classifier, optimizer, scheduler = initialize_model(epochs=EPOCH)
+    train(bert_classifier, train_dataloader, dev_dataloader, epochs=EPOCH, evaluation=True)
+
+    # Save the model state and optimizer state
+    torch.save({
+        'model_state_dict': bert_classifier.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        # Include other necessary items like epoch number, loss, etc.
+    }, MODEL_SAVE_PATH)
+
+    # load and infer
+    model_load_path = MODEL_SAVE_PATH
+    checkpoint = torch.load(model_load_path, map_location=device)
+    bert_classifier.load_state_dict(checkpoint['model_state_dict'])
+    bert_classifier.to(device)  # Move model to the right device
+    bert_classifier.eval()  # Set the model to evaluation mode for predictionsptimizer.load_state_dict(checkpoint['optimizer_state_dict']t
+    pred = bert_predict(bert_classifier, dev_dataloader)
+    print(pred)
+    print(dev_labels)
+    final_report = classification_report(dev_labels, pred, target_names=['Contradiction', 'Entailment'])
+    print(final_report)
+    with open('report_bert.txt', 'a') as report:
+        report.write(final_report)
