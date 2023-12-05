@@ -141,7 +141,7 @@ class BertClassifier(nn.Module):
         """
         super(BertClassifier, self).__init__()
         # Specify hidden size of BERT, hidden size of our classifier, and number of labels
-        D_in, H, D_out = 768, HIDDEN_SIZE, 2
+        D_in, H, D_out = 768, HIDDEN_SIZE, 1
 
         # Instantiate BERT model
         self.model = model
@@ -197,7 +197,7 @@ def initialize_model(epochs=EPOCH):
 
 
 # Specify loss function
-loss_fn = nn.CrossEntropyLoss()
+loss_fn = nn.BCEWithLogitsLoss()
 
 def set_seed(seed_value=42):
   random.seed(seed_value)
@@ -246,7 +246,7 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             logits = model(b_input_ids, b_attn_mask)
 
             # Compute loss and accumulate the loss values
-            loss = loss_fn(logits, b_labels)
+            loss = loss_fn(logits, b_labels.float().unsqueeze(1))
             batch_loss += loss.item()
             total_loss += loss.item()
 
@@ -315,7 +315,7 @@ def evaluate(model, val_dataloader):
             logits = model(b_input_ids, b_attn_mask)
 
         # Compute loss
-        loss = loss_fn(logits, b_labels)
+        loss = loss_fn(logits, b_labels.float().unsqueeze(1))
         val_loss.append(loss.item())
 
         # Get the predictions
@@ -352,21 +352,18 @@ def bert_predict(model, test_dataloader):
             logits = model(b_input_ids, b_attn_mask)
             all_logits.append(logits)
             # Concatenate logits from each batch
-<<<<<<< HEAD
     all_logits = torch.cat(all_logits, dim=0)
     # Apply softmax to calculate probabilities
-    probs = F.softmax(all_logits, dim=1).cpu().numpy()
-    print(probs)
-    predictions = np.argmax(probs, axis=1).tolist()
+    probs = torch.sigmoid(all_logits).cpu().numpy()
 
+    # Convert probabilities to binary predictions (0 or 1)
+    predictions = (probs > 0.5).astype(int).flatten()  # Threshold is 0.5
 
-=======
     # all_logits = torch.cat(all_logits, dim=0)
     # # Apply softmax to calculate probabilities
     # probs = F.softmax(all_logits, dim=1).cpu().numpy()
     # predictions = np.argmax(probs, axis=1).tolist()
-    predictions = torch.argmax(all_logits, dim=1).flatten()
->>>>>>> 092dad183354bf6ed3f092eadb4122d5654e8945
+    # predictions = torch.argmax(all_logits, dim=1).flatten()
     return predictions
 
 pred = bert_predict(bert_classifier, train_dataloader)
