@@ -49,6 +49,10 @@ def preprocess_data(text_list):
         processed_text+=cleaned_text
     return processed_text
 
+def preproces(text):
+    return text
+
+
 def data_preprocess(data):
     inputs = []
     labels = []
