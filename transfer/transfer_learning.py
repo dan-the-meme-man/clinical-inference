@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, AutoModelForMaskedLM
 from transformers import AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 import numpy as np
+import re
 import torch.nn.functional as F
 from transformers import BertModel
 from sklearn.metrics import classification_report
@@ -37,8 +38,16 @@ else:
 
 
 
-def preprocess(text):
-  return text
+def preprocess_data(text_list):
+    processed_text =''
+    for text in text_list:
+        if text.split() and text.split()[0].isupper():
+            continue
+        pattern = r'[\u0000-\u001f\u007f-\u009f]'
+        # Replace the matched characters with an empty string
+        cleaned_text = re.sub(pattern, '', text)
+        processed_text+=cleaned_text
+    return processed_text
 
 def data_preprocess(data):
     inputs = []
@@ -47,16 +56,15 @@ def data_preprocess(data):
         data_f = json.load(data_file)
         data_f = shuffle(data_f)
         for i, f in enumerate(data_f):
-            primary_text = ' '.join([x.strip() for x in f['primary_text']])
+            primary_text = preprocess_data(f['primary_text'])
             statement = f['statement']
             if f['secondary_text']:
                 text_type = 'comparison'
-                secondary_text = ' '.join([x.strip() for x in f['secondary_text']])
-                input = f'Text type: {text_type} Primary text: {primary_text} Secondary text: {secondary_text} Statement: {statement}'
+                secondary_text = preprocess_data(['secondary_text'])
+                input = f'Statement: {statement} Text type: {text_type} Primary text: {primary_text} Secondary text: {secondary_text} '
             else:
-                secondary_text = ''
                 text_type = 'single'
-                input = f'Text type: {text_type} Primary text: {primary_text} Statement: {statement}'
+                input = f'Statement: {statement} Text type: {text_type} Primary text: {primary_text} '
             #if i>20:
                # break
             label = label_num_pair[f['label']]
