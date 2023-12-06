@@ -49,7 +49,7 @@ def preprocess_data(text_list):
         processed_text+=cleaned_text
     return processed_text
 
-def preproces(text):
+def preprocess(text):
     return text
 
 
