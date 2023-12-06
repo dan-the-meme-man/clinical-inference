@@ -22,6 +22,8 @@ EPOCH = 20
 HIDDEN_SIZE=100
 LEARNING_RATE = 5e-5
 BS = 16
+DROPOUT =0.1
+EPSILON = 1e-8
 
 
 if torch.cuda.is_available():
@@ -122,7 +124,13 @@ class BertClassifier(nn.Module):
         self.classifier = nn.Sequential(
             nn.Linear(D_in, H),
             nn.ReLU(),
-            # nn.Dropout(0.5),
+            nn.Dropout(DROPOUT),
+            nn.Linear(H, H),
+            nn.ReLU(),
+            nn.Dropout(DROPOUT),
+            nn.Linear(H, H),
+            nn.ReLU(),
+            nn.Dropout(DROPOUT),
             nn.Linear(H, D_out)
         )
 
@@ -155,7 +163,7 @@ def initialize_model(epochs=EPOCH):
     # Create the optimizer
     optimizer = AdamW(bert_classifier.parameters(),
                       lr=LEARNING_RATE,    # Default learning rate
-                      eps=1e-8    # Default epsilon value
+                      eps=EPSILON    # Default epsilon value
                       )
 
     # Total number of training steps
@@ -172,15 +180,6 @@ def set_seed(seed_value=42):
   np.random.seed(seed_value)
   torch.manual_seed(seed_value)
   torch.cuda.manual_seed_all(seed_value)
-
-
-def set_seed(seed_value=42):
-    """Set seed for reproducibility.
-    """
-    random.seed(seed_value)
-    np.random.seed(seed_value)
-    torch.manual_seed(seed_value)
-    torch.cuda.manual_seed_all(seed_value)
 
 
 def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=False):
