@@ -195,7 +195,7 @@ def main():
             shuf=True,
             mix=False,
             use_indices=False
-        )[:10]
+        )[:100]
         dev_dataset = train_dataset
         batch_size_pretrain = 1
         batch_size_finetune = 1
