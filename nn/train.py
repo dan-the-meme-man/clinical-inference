@@ -15,8 +15,12 @@ from data.retrieve_data import get_data
 # model architecture
 from torch_nn import *
 
+# can test overfit model
+from sklearn.metrics import classification_report
+from test import test
+
 # FOR DEBUGGING
-overfit = False
+overfit = True
 
 """Logs a message to the console and to a file.
         
@@ -28,6 +32,35 @@ def log_msg(msg, param_str):
     print(msg)
     with open(os.path.join('nn', 'logs', f'{param_str}.log'), 'a+', encoding='utf-8') as f:
         f.write(msg + '\n')
+        
+def test_overfit(model, dev_dataset, param_str, device):
+    
+    # test output directory
+    test_dir = os.path.join('nn', 'tests')
+    if not os.path.exists(test_dir):
+        os.mkdir(test_dir)
+    
+    print(f'Testing {param_str}.pt.')
+    model.eval()
+    
+    preds = []
+    labels = []
+    
+    # test model
+    #with torch.no_grad():
+    for i in range(len(dev_dataset)):
+        item = dev_dataset[i]
+        labels.append(item[1])
+        preds.append(test(model, item, device))
+                    
+    # calculate accuracy
+    report = classification_report(labels, preds)
+
+    print(report)
+
+    # write to file
+    with open(os.path.join(test_dir, f'{param_str}.txt'), 'w+', encoding='utf-8') as f:
+        f.write(report)
 
 """Trains the model for one batch.
     
@@ -82,8 +115,10 @@ def main():
     ### TRAINING HYPERPARAMETERS ###
     lr = 7.5e-5
     weight_decay = 7.5e-5
-    batch_size = 1
-    epochs = 10
+    batch_size_pretrain = 16
+    batch_size_finetune = 1
+    epochs_pretrain = 3
+    epochs_finetune = 10
     
     ### MODEL HYPERPARAMETERS ###
     specs = {
@@ -111,7 +146,10 @@ def main():
     # manage device and create model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = TransformerNLI(specs=specs, device=device).to(device)
-    param_str = f'{model.name}_lr_{lr}_wd_{weight_decay}_bs_{batch_size}_ep_{epochs}'
+    param_str = f'{model.name}_lr_{lr}_wd_{weight_decay}_bs_{batch_size_pretrain}_{batch_size_pretrain}_'
+    param_str += f'ep_{epochs_pretrain}_{epochs_finetune}_d_{specs["d_model"]}_l_{specs["num_layers"]}_h_'
+    param_str += f'{specs["nhead"]}_ff_{specs["dim_feedforward"]}_e_{specs["embed_dim"]}_do_'
+    param_str += f'{specs["dropout"]}_act_{specs["activation"]}_ml_{specs["max_length"]}'
     if overfit: param_str += '_overfit'
     log_msg(f'Model: {model}\nNumber of params: {model.n_params}\n', param_str)
     log_msg(f'Using device: {device}.\n', param_str)
@@ -159,10 +197,12 @@ def main():
             use_indices=False
         )[:10]
         dev_dataset = train_dataset
-        batch_size = 1
-        epochs = 100
+        batch_size_pretrain = 1
+        batch_size_finetune = 1
+        epochs_pretrain = 0
+        epochs_finetune = 100
         for item in train_dataset:
-            print(item)
+            print(item[0], item[1], '\n')
 
     # ensure correct counts: 1700 train, 200 dev
     log_msg(f'Loaded {len(pretrain_dataset)} MNLI/SNLI examples.', param_str)
@@ -177,29 +217,27 @@ def main():
     train_losses = []
     dev_losses = []
     
-    ################################## EPOCH ##################################
-    for e in range(epochs):
+    num_pretrain_batches = len(pretrain_dataset) // batch_size_pretrain
+    num_train_batches = len(train_dataset) // batch_size_finetune
+    num_dev_batches = len(dev_dataset) // batch_size_finetune
+    
+    ################################ PRETRAIN #################################
+    for e in range(epochs_pretrain):
         
         # shuffle data
         #shuffle(pretrain_dataset.examples)
         #shuffle(train_dataset.examples)
         #shuffle(dev_dataset.examples)
         
-        num_pretrain_batches = len(pretrain_dataset) // batch_size
-        num_train_batches = len(train_dataset) // batch_size
-        num_dev_batches = len(dev_dataset) // batch_size
-        
-        log_msg(f'Begin epoch {e+1}/{epochs}.\n', param_str)
+        log_msg(f'Begin pretrain epoch {e+1}/{epochs_pretrain}.\n', param_str)
         model.train()
-        
-        ################################ PRETRAIN #################################
         
         if not overfit:
             # loop over batches
             for i in range(num_pretrain_batches):
                 
                 # get batch
-                batch = pretrain_dataset[i * batch_size : (i+1) * batch_size]
+                batch = pretrain_dataset[i * batch_size_pretrain : (i+1) * batch_size_pretrain]
                 
                 # train the model on the batch, record the loss
                 pretrain_losses.append(
@@ -219,7 +257,7 @@ def main():
                 log_msg(msg, param_str)
                 
             # dump rest of data into a batch if there is any
-            batch = pretrain_dataset[(i+1) * batch_size - 1 : -1]
+            batch = pretrain_dataset[(i+1) * batch_size_pretrain - 1 : -1]
             if len(batch) > 0:
                 pretrain_losses.append(
                     train_batch(
@@ -234,14 +272,18 @@ def main():
                 msg = f'Remainder batch loss: {pretrain_losses[-1]:8.4f}.'
                 msg += f' Average loss: {sum(pretrain_losses)/len(pretrain_losses):8.4f}.\n'
                 log_msg(msg, param_str)
+
+    ################################ FINETUNE ##################################
+    for e in range(epochs_finetune):
         
-        ################################## TRAIN ##################################
-        
+        log_msg(f'Begin finetune epoch {e+1}/{epochs_finetune}.\n', param_str)
+        model.train()
+    
         # loop over batches
         for i in range(num_train_batches):
             
             # get batch
-            batch = train_dataset[i * batch_size : (i+1) * batch_size]
+            batch = train_dataset[i * batch_size_finetune : (i+1) * batch_size_finetune]
             
             # train the model on the batch, record the loss
             train_losses.append(
@@ -261,7 +303,7 @@ def main():
             log_msg(msg, param_str)
             
         # dump rest of data into a batch if there is any
-        batch = train_dataset[(i+1) * batch_size - 1 : -1]
+        batch = train_dataset[(i+1) * batch_size_finetune - 1 : -1]
         if len(batch) > 0:
             train_losses.append(
                 train_batch(
@@ -280,13 +322,13 @@ def main():
         ################################### DEV ###################################
         model.eval() # TODO: if nan loss persists, try model.train()...
         
-        log_msg(f'Begin evaluation {e+1}/{epochs}.\n', param_str)
+        log_msg(f'Begin evaluation {e+1}/{epochs_finetune}.\n', param_str)
         
         # loop over batches
         for i in range(num_dev_batches):
             
             # get batch
-            batch = dev_dataset[i * batch_size : (i+1) * batch_size]
+            batch = dev_dataset[i * batch_size_finetune : (i+1) * batch_size_finetune]
             
             # train the model on the batch, record the loss
             dev_losses.append(
@@ -306,7 +348,7 @@ def main():
             log_msg(msg, param_str)
             
         # dump rest of data into a batch if there is any
-        batch = dev_dataset[(i+1) * batch_size - 1 : -1]
+        batch = dev_dataset[(i+1) * batch_size_finetune - 1 : -1]
         if len(batch) > 0:
             dev_losses.append(
                 train_batch(
@@ -333,16 +375,20 @@ def main():
     if not os.path.exists(plots_dir):
         os.mkdir(plots_dir)
     plt.figure()
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plt.scatter(list(range(len(pretrain_losses))), pretrain_losses, label='pretrain', s=2, c='blue')
-    plt.subplot(1, 2, 2)
+    plt.subplot(1, 3, 2)
     plt.scatter(list(range(len(train_losses))), train_losses, label='train', s=2, c='blue')
-    plt.subplot(1, 2, 3)
+    plt.subplot(1, 3, 3)
     plt.scatter(list(range(len(dev_losses))), dev_losses, label='dev', s=2, c='orange')
     plt.legend()
     plt.grid()
     plt.title('Losses')
     plt.savefig(os.path.join(plots_dir, param_str + '_losses.png'))
+    
+    # test overfit model
+    if overfit:
+        test_overfit(model, dev_dataset, param_str, device)
     
 if __name__ == '__main__':
     main()
