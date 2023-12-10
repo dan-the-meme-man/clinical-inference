@@ -22,6 +22,9 @@ loss_fn = nn.BCEWithLogitsLoss()  # don't change
 EPOCH = 20
 HIDDEN_SIZE=200
 LEARNING_RATE = 5e-6
+EPOCH = 20
+HIDDEN_SIZE=200
+LEARNING_RATE = 5e-5
 BS = 16
 DROPOUT =0.1
 EPSILON = 1e-8
@@ -298,7 +301,7 @@ def evaluate(model, val_dataloader):
 
         # Get the predictions
         probs = torch.sigmoid(logits).cpu().numpy()
-        # print(probs)
+        preds = (probs > 0.5).astype(int).flatten() 
         # Convert probabilities to binary predictions (0 or 1)
         accuracy = (preds == b_labels.cpu().numpy()).mean() * 100
         val_accuracy.append(accuracy)
@@ -334,6 +337,7 @@ def bert_predict(model, test_dataloader):
     # Convert probabilities to binary predictions (0 or 1)
     predictions = (probs > 0.5).astype(int).flatten()  # Threshold is 0.5
     final_report = classification_report(gold_labels, predictions, target_names=['Contradiction', 'Entailment'])
+    print(final_report)
     with open('report_bert.txt', 'a') as report:
         report.write(final_report)
     return predictions
@@ -380,4 +384,4 @@ if __name__=='__main__':
     bert_classifier.load_state_dict(checkpoint['model_state_dict'])
     bert_classifier.to(device)  # Move model to the right device
     bert_classifier.eval()  # Set the model to evaluation mode for predictionsptimizer.load_state_dict(checkpoint['optimizer_state_dict']t
-    pred = bert_predict(bert_classifier, dev_dataloader)
+    pred = bert_predict(bert_classifier, train_dataloader)
