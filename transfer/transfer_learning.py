@@ -20,8 +20,8 @@ MODEL_SAVE_PATH = "bert.pth"
 MAX_LEN=512 # don't change
 loss_fn = nn.BCEWithLogitsLoss()  # don't change
 EPOCH = 20
-HIDDEN_SIZE=100
-LEARNING_RATE = 5e-5
+HIDDEN_SIZE=200
+LEARNING_RATE = 5e-6
 BS = 16
 DROPOUT =0.1
 EPSILON = 1e-8
@@ -69,8 +69,8 @@ def data_preprocess(data):
             else:
                 text_type = 'single'
                 input = f'Statement: {statement} Text type: {text_type} Primary text: {primary_text} '
-            #if i>20:
-               # break
+            if i>20:
+               break
             label = label_num_pair[f['label']]
             inputs.append(input)
             labels.append(label)
@@ -137,9 +137,9 @@ class BertClassifier(nn.Module):
             nn.Linear(D_in, H),
             nn.ReLU(),
             nn.Dropout(DROPOUT),
-            nn.Linear(H, H),
-            nn.ReLU(),
-            nn.Dropout(DROPOUT),
+            #nn.Linear(H, H),
+            #nn.ReLU(),
+            #nn.Dropout(DROPOUT),
             nn.Linear(H, H),
             nn.ReLU(),
             nn.Dropout(DROPOUT),
@@ -217,7 +217,6 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             batch_counts += 1
             # Load batch to GPU
             b_input_ids, b_attn_mask, b_labels = tuple(t.to(device) for t in batch)
-
             # Zero out any previously calculated gradients
             model.zero_grad()
 
@@ -237,7 +236,7 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
 
             # Update parameters and the learning rate
             optimizer.step()
-            scheduler.step()
+            # scheduler.step()
 
             # Print the loss values and time elapsed for every 20 batches
             if (step % 20 == 0 and step != 0) or (step == len(train_dataloader) - 1):
@@ -299,10 +298,8 @@ def evaluate(model, val_dataloader):
 
         # Get the predictions
         probs = torch.sigmoid(logits).cpu().numpy()
-
+        # print(probs)
         # Convert probabilities to binary predictions (0 or 1)
-        preds = (probs > 0.5).astype(int).flatten()
-        # Calculate the accuracy rate
         accuracy = (preds == b_labels.cpu().numpy()).mean() * 100
         val_accuracy.append(accuracy)
 
@@ -316,7 +313,7 @@ def evaluate(model, val_dataloader):
 
 
 def bert_predict(model, test_dataloader):
-
+    gold_labels =[]
     # Put the model into the evaluation mode. The dropout layers are disabled during
     # the test time.
     model.eval()
@@ -324,7 +321,8 @@ def bert_predict(model, test_dataloader):
     # For each batch in our test set...
     for batch in test_dataloader:
         # Load batch to GPU
-        b_input_ids, b_attn_mask = tuple(t.to(device) for t in batch)[:2]
+        b_input_ids, b_attn_mask, b_labels = tuple(t.to(device) for t in batch)
+        gold_labels.extend(b_labels.cpu().numpy())
         # Compute logits
         with torch.no_grad():
             logits = model(b_input_ids, b_attn_mask)
@@ -333,16 +331,11 @@ def bert_predict(model, test_dataloader):
     all_logits = torch.cat(all_logits, dim=0)
     # Apply softmax to calculate probabilities
     probs = torch.sigmoid(all_logits).cpu().numpy()
-    print(probs)
-
     # Convert probabilities to binary predictions (0 or 1)
     predictions = (probs > 0.5).astype(int).flatten()  # Threshold is 0.5
-
-    # all_logits = torch.cat(all_logits, dim=0)
-    # # Apply softmax to calculate probabilities
-    # probs = F.softmax(all_logits, dim=1).cpu().numpy()
-    # predictions = np.argmax(probs, axis=1).tolist()
-    # predictions = torch.argmax(all_logits, dim=1).flatten()
+    final_report = classification_report(gold_labels, predictions, target_names=['Contradiction', 'Entailment'])
+    with open('report_bert.txt', 'a') as report:
+        report.write(final_report)
     return predictions
 
 if __name__=='__main__':
@@ -372,7 +365,7 @@ if __name__=='__main__':
 
     # initialize and train the model
     bert_classifier, optimizer, scheduler = initialize_model(epochs=EPOCH)
-    train(bert_classifier, train_dataloader, dev_dataloader, epochs=EPOCH, evaluation=True)
+    train(bert_classifier, train_dataloader, train_dataloader, epochs=EPOCH, evaluation=True)
 
     # Save the model state and optimizer state
     torch.save({
@@ -380,7 +373,7 @@ if __name__=='__main__':
         'optimizer_state_dict': optimizer.state_dict(),
         # Include other necessary items like epoch number, loss, etc.
     }, MODEL_SAVE_PATH)
-
+    print(train_labels_ID)
     # load and infer
     model_load_path = MODEL_SAVE_PATH
     checkpoint = torch.load(model_load_path, map_location=device)
@@ -388,9 +381,3 @@ if __name__=='__main__':
     bert_classifier.to(device)  # Move model to the right device
     bert_classifier.eval()  # Set the model to evaluation mode for predictionsptimizer.load_state_dict(checkpoint['optimizer_state_dict']t
     pred = bert_predict(bert_classifier, dev_dataloader)
-    print(pred)
-    print(dev_labels)
-    final_report = classification_report(dev_labels, pred, target_names=['Contradiction', 'Entailment'])
-    print(final_report)
-    with open('report_bert.txt', 'a') as report:
-        report.write(final_report)
