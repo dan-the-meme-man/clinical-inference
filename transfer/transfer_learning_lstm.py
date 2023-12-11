@@ -12,25 +12,26 @@ import numpy as np
 import re
 import torch.nn.functional as F
 from transformers import BertModel
+from transformers import DebertaTokenizer
 from sklearn.metrics import classification_report
-#tokenizer = AutoTokenizer.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
-#model =BertModel.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
 from transformers import DebertaV2Model, AutoTokenizer
-tokenizer = AutoTokenizer.from_pretrained("microsoft/deberta-v3-large")
-model =DebertaV2Model.from_pretrained("microsoft/deberta-v3-large")
+#tokenizer = AutoTokenizer.from_pretrained("microsoft/deberta-v3-large")
+#model =DebertaV2Model.from_pretrained("microsoft/deberta-v3-large")
 
 
+tokenizer = AutoTokenizer.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
+model =BertModel.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext")
 
-
+MODEL_SAVE_PATH = "bert.pth"
 MAX_LEN=512 # don't change
 loss_fn = nn.BCEWithLogitsLoss()  # don't change
-EPOCH = 10
+EPOCH = 20
 HIDDEN_SIZE=200
-LEARNING_RATE = 1e-6
-BS = 4
-DROPOUT =0.1
+LEARNING_RATE = 5e-6
+BS =8
+DROPOUT =0.2
 EPSILON = 1e-8
-
+LSTM_HIDDEN_SIZE = 200
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
@@ -41,7 +42,7 @@ else:
     print('No GPU available, using the CPU instead.')
     device = torch.device("cpu")
 
-MODEL_SAVE_PATH = "bert.pth"
+
 
 def preprocess_data(text_list):
     processed_text =''
@@ -74,7 +75,7 @@ def data_preprocess(data):
             else:
                 text_type = 'single'
                 input = f'Statement: {statement} Text type: {text_type} Primary text: {primary_text} '
-            if i>2000:
+            if i>3000:
                break
             label = label_num_pair[f['label']]
             inputs.append(input)
@@ -123,56 +124,63 @@ def preprocessing_for_bert(input):
 
     return input_ids, attention_masks
 
+
 class BertClassifier(nn.Module):
     def __init__(self, model):
-        """
-        @param    bert: a BertModel object
-        @param    classifier: a torch.nn.Module classifier
-        @param    freeze_bert (bool): Set `False` to fine-tune the BERT model
-        """
         super(BertClassifier, self).__init__()
-        # Specify hidden size of BERT, hidden size of our classifier, and number of labels
-        D_in, H, D_out =1024, HIDDEN_SIZE, 1
+        # Specify hidden size of BERT, hidden size of LSTM, and number of labels
+        D_in, H, D_out = 768, HIDDEN_SIZE, 1
 
         # Instantiate BERT model
         self.model = model
 
-        # Instantiate an one-layer feed-forward classifier
+        # Instantiate BiLSTM layer
+        self.bilstm = nn.LSTM(input_size=D_in, 
+                              hidden_size=LSTM_HIDDEN_SIZE, 
+                              num_layers=1, 
+                              batch_first=True, 
+                              bidirectional=True)
+
+        # Update the input size for the classifier to be twice the LSTM hidden size
+        # because of bidirectionality
+        classifier_input_size = 2 * LSTM_HIDDEN_SIZE
+
+        # Instantiate an updated feed-forward classifier
         self.classifier = nn.Sequential(
-            nn.Linear(D_in, H),
-            nn.ReLU(),
-            nn.Dropout(DROPOUT),
-            #nn.Linear(H, H),
-            #nn.ReLU(),
-            #nn.Dropout(DROPOUT),
-            nn.Linear(H, H),
+            nn.Linear(classifier_input_size, H),
+#            nn.ReLU(),
+#            nn.Dropout(DROPOUT),
+#            nn.Linear(H, H),
+#            nn.ReLU(),
+#            nn.Dropout(DROPOUT),
+#            nn.Linear(H, H),
             nn.ReLU(),
             nn.Dropout(DROPOUT),
             nn.Linear(H, D_out)
         )
 
     def forward(self, input_ids, attention_mask):
-        """
-        Feed input to BERT and the classifier to compute logits.
-        @param    input_ids (torch.Tensor): an input tensor with shape (batch_size,
-                      max_length)
-        @param    attention_mask (torch.Tensor): a tensor that hold attention mask
-                      information with shape (batch_size, max_length)
-        @return   logits (torch.Tensor): an output tensor with shape (batch_size,
-                      num_labels)
-        """
         # Feed input to BERT
-        outputs = self.model(input_ids=input_ids,attention_mask=attention_mask)
-        last_hidden_state = outputs.last_hidden_state
+        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
 
-        first_token_tensor = last_hidden_state[:, 0]
-        logits = self.classifier(first_token_tensor)
-        #pooled_output = outputs.pooler_output
-        #logits = self.classifier(pooled_output)
+        # Use the sequence output instead of pooled output
+        sequence_output = outputs.last_hidden_state
+
+        # Pass sequence output through BiLSTM
+        lstm_output, _ = self.bilstm(sequence_output)
+
+        # Optionally apply pooling to the BiLSTM output (e.g., average or max pooling)
+        pooled_lstm_output = torch.mean(lstm_output, dim=1)
+        # Feed the (pooled) lstm output to the classifier
+        logits = self.classifier(pooled_lstm_output)
+
         return logits
 
 
-def initialize_model(model, epochs=EPOCH):
+
+
+
+def initialize_model(epochs=EPOCH):
     """Initialize the Bert Classifier, the optimizer and the learning rate scheduler.
     """
     # Instantiate Bert Classifier
@@ -192,7 +200,7 @@ def initialize_model(model, epochs=EPOCH):
 
     # Set up the learning rate scheduler
     scheduler = get_linear_schedule_with_warmup(optimizer,
-                                                num_warmup_steps=600, # Default value
+                                                num_warmup_steps=0, # Default value
                                                 num_training_steps=total_steps)
     return bert_classifier, optimizer, scheduler
 
@@ -226,6 +234,7 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             batch_counts += 1
             # Load batch to GPU
             b_input_ids, b_attn_mask, b_labels = tuple(t.to(device) for t in batch)
+
             # Zero out any previously calculated gradients
             model.zero_grad()
 
@@ -245,7 +254,7 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
 
             # Update parameters and the learning rate
             optimizer.step()
-            scheduler.step()
+#            scheduler.step()
 
             # Print the loss values and time elapsed for every 20 batches
             if (step % 20 == 0 and step != 0) or (step == len(train_dataloader) - 1):
@@ -307,8 +316,9 @@ def evaluate(model, val_dataloader):
 
         # Get the predictions
         probs = torch.sigmoid(logits).cpu().numpy()
-        preds = (probs > 0.5).astype(int).flatten() 
         # Convert probabilities to binary predictions (0 or 1)
+        preds = (probs > 0.5).astype(int).flatten()
+        # Calculate the accuracy rate
         accuracy = (preds == b_labels.cpu().numpy()).mean() * 100
         val_accuracy.append(accuracy)
 
@@ -317,9 +327,6 @@ def evaluate(model, val_dataloader):
     val_accuracy = np.mean(val_accuracy)
 
     return val_loss, val_accuracy
-
-
-
 
 def bert_predict(model, test_dataloader):
     gold_labels =[]
@@ -348,6 +355,9 @@ def bert_predict(model, test_dataloader):
         report.write(final_report)
     return predictions
 
+
+
+
 if __name__=='__main__':
     set_seed(42)
     # prepare data
@@ -373,22 +383,8 @@ if __name__=='__main__':
     dev_sampler = SequentialSampler(dev_data)
     dev_dataloader = DataLoader(dev_data, sampler=dev_sampler, batch_size=BS)
 
-
-
-    bert_classifier = BertClassifier(model)
-
-    bert_classifier.to(device)
-
-    model_load_path = MODEL_SAVE_PATH
-    checkpoint = torch.load(model_load_path, map_location=device)
-
-    bert_classifier.load_state_dict(checkpoint['model_state_dict'])
-
-    optimizer = AdamW(bert_classifier.parameters(), lr=LEARNING_RATE, eps=EPSILON)
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
     # initialize and train the model
-    _, _, scheduler = initialize_model(bert_classifier,epochs=EPOCH)
+    bert_classifier, optimizer, scheduler = initialize_model(epochs=EPOCH)
     train(bert_classifier, train_dataloader, dev_dataloader, epochs=EPOCH, evaluation=True)
 
     # Save the model state and optimizer state
@@ -397,6 +393,7 @@ if __name__=='__main__':
         'optimizer_state_dict': optimizer.state_dict(),
         # Include other necessary items like epoch number, loss, etc.
     }, MODEL_SAVE_PATH)
+
     # load and infer
     model_load_path = MODEL_SAVE_PATH
     checkpoint = torch.load(model_load_path, map_location=device)
