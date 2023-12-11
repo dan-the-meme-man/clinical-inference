@@ -131,7 +131,7 @@ class ClinicalDataset(Dataset):
             self.cls = ''
             self.trial_sep = ''
             self.sent_sep = ''
-            self.statement_sep = ''
+            self.statement_sep = '<stm>'
             self.end = ''
         
         # settings about data representation
@@ -301,7 +301,7 @@ class NLIDataset(Dataset):
             self.end = control_symbols['end']
         else:
             self.cls = ''
-            self.statement_sep = ''
+            self.statement_sep = '<stm>'
             self.end = ''
         
         self.examples = []

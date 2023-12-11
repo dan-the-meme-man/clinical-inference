@@ -20,11 +20,11 @@ from sklearn.metrics import classification_report
 from test import test
 
 # FOR DEBUGGING
-overfit = True
+overfit = False
 
 """Logs a message to the console and to a file.
         
-    Attributes:
+    Parameters:
         msg (str): the message to log
         param_str (str): the file to log to
 """
@@ -32,7 +32,15 @@ def log_msg(msg, param_str):
     print(msg)
     with open(os.path.join('nn', 'logs', f'{param_str}.log'), 'a+', encoding='utf-8') as f:
         f.write(msg + '\n')
-        
+
+"""Tests an overfit model.
+
+    Parameters:
+        model: the model to test
+        dev_dataset: the dataset to test on
+        param_str (str): the name of the model
+        device: the device to use
+"""   
 def test_overfit(model, dev_dataset, param_str, device):
     
     # test output directory
@@ -64,7 +72,7 @@ def test_overfit(model, dev_dataset, param_str, device):
 
 """Trains the model for one batch.
     
-    Attributes:
+    Parameters:
         model: the model to train
         batch: the batch of examples
         optimizer: the optimizer
@@ -112,15 +120,15 @@ def train_batch(model, batch, optimizer, criterion, device, update):
 
 def main():
     
-    ### TRAINING HYPERPARAMETERS ###
+    ################### TRAINING HYPERPARAMETERS #######################
     lr = 7.5e-5
     weight_decay = 7.5e-5
-    batch_size_pretrain = 16
+    batch_size_pretrain = 1
     batch_size_finetune = 1
     epochs_pretrain = 3
     epochs_finetune = 10
     
-    ### MODEL HYPERPARAMETERS ###
+    ##################### MODEL HYPERPARAMETERS ####################
     specs = {
         'd_model': 256 if not overfit else 32,
         'num_layers': 6 if not overfit else 2,
@@ -132,7 +140,7 @@ def main():
         'max_length': 2400
     }
     
-    ### LEAVE ALONE? ###
+    ########################### LEAVE ALONE? #########################
     criterion = torch.nn.BCEWithLogitsLoss()
     betas = (0.9, 0.999)
     eps = 1e-8
@@ -320,9 +328,8 @@ def main():
             log_msg(msg, param_str)
             
         ################################### DEV ###################################
-        model.eval() # TODO: if nan loss persists, try model.train()...
-        
         log_msg(f'Begin evaluation {e+1}/{epochs_finetune}.\n', param_str)
+        model.eval() # TODO: if nan loss persists, try model.train()...
         
         # loop over batches
         for i in range(num_dev_batches):
