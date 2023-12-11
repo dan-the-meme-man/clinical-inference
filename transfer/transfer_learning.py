@@ -42,10 +42,6 @@ else:
     device = torch.device("cpu")
 
 MODEL_SAVE_PATH = "bert.pth"
-model_load_path = MODEL_SAVE_PATH
-checkpoint = torch.load(model_load_path, map_location=device)
-model.load_state_dict(checkpoint['model_state_dict'])
-model.to(device)  # Move model to the right device
 
 def preprocess_data(text_list):
     processed_text =''
