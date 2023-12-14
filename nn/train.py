@@ -159,7 +159,7 @@ def main():
         batch_size_finetune = 1
         epochs_pretrain = 0
         epochs_finetune = 100
-    param_str = f'{model.name}_lr_{lr}_wd_{weight_decay}_bs_{batch_size_pretrain}_{batch_size_pretrain}_'
+    param_str = f'{model.name}_lr_{lr}_wd_{weight_decay}_bs_{batch_size_pretrain}_{batch_size_finetune}_'
     param_str += f'ep_{epochs_pretrain}_{epochs_finetune}_d_{specs["d_model"]}_l_{specs["num_layers"]}_h_'
     param_str += f'{specs["nhead"]}_ff_{specs["dim_feedforward"]}_e_{specs["embed_dim"]}_do_'
     param_str += f'{specs["dropout"]}_act_{specs["activation"]}_ml_{specs["max_length"]}'
