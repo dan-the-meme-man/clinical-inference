@@ -20,7 +20,7 @@ from sklearn.metrics import classification_report
 from test import test
 
 # FOR DEBUGGING
-overfit = False
+overfit = True
 
 """Logs a message to the console and to a file.
         
@@ -125,17 +125,17 @@ def main():
     weight_decay = 7.5e-5
     batch_size_pretrain = 1
     batch_size_finetune = 1
-    epochs_pretrain = 3
-    epochs_finetune = 10
+    epochs_pretrain = 0
+    epochs_finetune = 30
     
     ##################### MODEL HYPERPARAMETERS ####################
     specs = {
-        'd_model': 256 if not overfit else 32,
-        'num_layers': 6 if not overfit else 2,
-        'nhead': 8 if not overfit else 2,
-        'dim_feedforward': 512 if not overfit else 64,
-        'embed_dim': 256 if not overfit else 32,
-        'dropout': 0.1 if not overfit else 0.0,
+        'd_model': 256, #if not overfit else 32,
+        'num_layers': 6, #if not overfit else 2,
+        'nhead': 8, #if not overfit else 2,
+        'dim_feedforward': 512, #if not overfit else 64,
+        'embed_dim': 256, #if not overfit else 32,
+        'dropout': 0.0, #0.1 if not overfit else 0.0,
         'activation': 'relu',
         'max_length': 2400
     }
@@ -154,11 +154,6 @@ def main():
     # manage device and create model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = TransformerNLI(specs=specs, device=device).to(device)
-    if overfit:
-        batch_size_pretrain = 1
-        batch_size_finetune = 1
-        epochs_pretrain = 0
-        epochs_finetune = 100
     param_str = f'{model.name}_lr_{lr}_wd_{weight_decay}_bs_{batch_size_pretrain}_{batch_size_finetune}_'
     param_str += f'ep_{epochs_pretrain}_{epochs_finetune}_d_{specs["d_model"]}_l_{specs["num_layers"]}_h_'
     param_str += f'{specs["nhead"]}_ff_{specs["dim_feedforward"]}_e_{specs["embed_dim"]}_do_'
