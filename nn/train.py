@@ -154,6 +154,11 @@ def main():
     # manage device and create model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = TransformerNLI(specs=specs, device=device).to(device)
+    if overfit:
+        batch_size_pretrain = 1
+        batch_size_finetune = 1
+        epochs_pretrain = 0
+        epochs_finetune = 100
     param_str = f'{model.name}_lr_{lr}_wd_{weight_decay}_bs_{batch_size_pretrain}_{batch_size_pretrain}_'
     param_str += f'ep_{epochs_pretrain}_{epochs_finetune}_d_{specs["d_model"]}_l_{specs["num_layers"]}_h_'
     param_str += f'{specs["nhead"]}_ff_{specs["dim_feedforward"]}_e_{specs["embed_dim"]}_do_'
@@ -203,14 +208,8 @@ def main():
             shuf=True,
             mix=False,
             use_indices=False
-        )[:100]
+        )[:1700]
         dev_dataset = train_dataset
-        batch_size_pretrain = 1
-        batch_size_finetune = 1
-        epochs_pretrain = 0
-        epochs_finetune = 100
-        for item in train_dataset:
-            print(item[0], item[1], '\n')
 
     # ensure correct counts: 1700 train, 200 dev
     log_msg(f'Loaded {len(pretrain_dataset)} MNLI/SNLI examples.', param_str)
