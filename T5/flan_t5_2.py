@@ -8,17 +8,19 @@ from transformers import T5Tokenizer, DataCollatorForSeq2Seq
 from transformers import T5ForConditionalGeneration, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from sklearn.metrics import classification_report
 
+
 # Load the tokenizer, model, and data collator
 MODEL_NAME = "google/flan-t5-base"
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+#tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-#tokenizer = T5Tokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
+tokenizer = T5Tokenizer.from_pretrained(MODEL_NAME)
+model = T5ForConditionalGeneration.from_pretrained(MODEL_NAME)
+#model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
 
-dataset = load_dataset('json', data_files={'train': '/Data/strain.json', 'dev': '/Data/sdev.json'})
+dataset = load_dataset('json', data_files={'train': 'Data/train.json', 'dev': 'Data/dev.json'})
 
 def concatenate(example):
     premise = "".join(example["primary_text"])
@@ -26,22 +28,29 @@ def concatenate(example):
         premise += "".join(example["secondary_text"])
     prompt = " .Based on this, is the following statement an entailment or contradiction? "
     statement = "".join(example["statement"])
-    query = premise + prompt + statement +'ANSWER:'
+    query = premise + prompt + statement
     example["query"] = query
-    # label2int = {"Contradiction": 0, "Entailment": 1}
-    # example['labels'] = label2int[example['label']]
+
+    ### This is an alternate instruction template
+    # premise = "".join(example["primary_text"])
+    # if example["secondary_text"] != None:
+    #     premise += "".join(example["secondary_text"])
+    # prompt = " .Question: Does this imply that "
+    # statement = "".join(example["statement"])
+    # options = "OPTIONS:\n Entailment\n Contradiction"
+    # query = premise + prompt + statement + "? " + options
+    # print(query)
+    # example["query"] = query
     return example
 
 
 updated_dataset = dataset.map(concatenate)
 updated_dataset = updated_dataset.remove_columns(["primary_text", "secondary_text", "statement"])
-# updated_dataset=updated_dataset['dev'][:10]
 
 from datasets import concatenate_datasets
 
 # The maximum total input sequence length after tokenization.
 # Sequences longer than this will be truncated, sequences shorter will be padded.
-# tokenized_inputs = concatenate_datasets([updated_dataset["train"], updated_dataset["dev"]]).map(lambda x: tokenizer(x["query"], truncation=True), batched=True, remove_columns=["query", "label"])
 tokenized_inputs = concatenate_datasets([updated_dataset["train"], updated_dataset["dev"]]).map(lambda x: tokenizer(x["query"], truncation=True), batched=True, remove_columns=["query", "label"])
 max_source_length = max([len(x) for x in tokenized_inputs["input_ids"]])
 print(f"Max source length: {max_source_length}")
@@ -54,7 +63,7 @@ print(f"Max target length: {max_target_length}")
 
 
 print(updated_dataset['train'][0])
-# We prefix our tasks with "answer the question"
+
 
 # print(updated_dataset['train']['label'])
 # print(updated_dataset['train']['query'])
@@ -70,12 +79,10 @@ def preprocess(examples, padding="max_length"):
    #print(model_inputs[0])
 
    # The "labels" are the tokenized outputs:
-   # label2int = {"Contradiction": 0, "Entailment": 1}
-   # targets = [label2id[label] for label in examples['label']]
-   # labels = [label2int[l] for l in examples['label']]
-   # print(len(labels))
+
    labels = tokenizer(text_target=examples['label'],
                       max_length=max_target_length,
+                      #max_length = 1024,
                       padding=padding,
                       truncation=True)
 
@@ -113,7 +120,12 @@ def compute_metrics(eval_preds):
 
 # Hyperparameters
 L_RATE = 3e-4
+L_RATE = 3e-5
+#L_RATE = 3e-6
+
 BATCH_SIZE = 8
+#BATCH_SIZE = 1
+
 PER_DEVICE_EVAL_BATCH = 4
 WEIGHT_DECAY = 0.01
 SAVE_TOTAL_LIM = 3
@@ -147,16 +159,12 @@ trainer.train()
 trainer.evaluate()
 trainer.save_model('T5_Models')
 model = AutoModelForSeq2SeqLM.from_pretrained('T5_Models')
-
-def pred(model, dev_tokenized):
+print('load the data')
+def pred(model, dev_tokenized, max_len):
     predictions=[]
     prompt, label = dev_tokenized['query'], dev_tokenized['label']
     for p in prompt:
-        # p = tokenizer(p, max_length=max_source_length, padding='max_length', truncation=True)
-        # pred = model.generate(p)
-        # predictions.append(pred)
-
-        input_ids = tokenizer(p, return_tensors="pt").input_ids
+        input_ids = tokenizer(p, max_length=max_len, return_tensors="pt").input_ids
         outputs = model.generate(input_ids, max_new_tokens=4)
         pred = tokenizer.decode(outputs[0], skip_special_tokens=True)
         if 'Contradiction' in pred:
@@ -167,12 +175,12 @@ def pred(model, dev_tokenized):
 
 
 
-
     print(label)
     print(predictions)
     print(classification_report(label, predictions))
 
-pred(model, updated_dataset['dev'])
+pred(model, updated_dataset['dev'], max_source_length)
+
 
 
 
