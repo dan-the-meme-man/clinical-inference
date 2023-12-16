@@ -22,13 +22,13 @@ model =DebertaV2Model.from_pretrained("microsoft/deberta-v3-large")
 
 
 
-MAX_LEN=512 # don't change
+MAX_LEN=800 # don't change
 loss_fn = nn.BCEWithLogitsLoss()  # don't change
-EPOCH = 10
+EPOCH = 15
 HIDDEN_SIZE=200
-LEARNING_RATE = 1e-6
+LEARNING_RATE = 5e-6
 BS = 4
-DROPOUT =0.1
+DROPOUT =0.05
 EPSILON = 1e-8
 
 
@@ -41,7 +41,7 @@ else:
     print('No GPU available, using the CPU instead.')
     device = torch.device("cpu")
 
-MODEL_SAVE_PATH = "bert.pth"
+MODEL_SAVE_PATH = "roberta_new2.pth"
 
 def preprocess_data(text_list):
     processed_text =''
@@ -140,12 +140,12 @@ class BertClassifier(nn.Module):
         # Instantiate an one-layer feed-forward classifier
         self.classifier = nn.Sequential(
             nn.Linear(D_in, H),
-            nn.ReLU(),
-            nn.Dropout(DROPOUT),
+            #nn.ReLU(),
+            #nn.Dropout(DROPOUT),
             #nn.Linear(H, H),
             #nn.ReLU(),
             #nn.Dropout(DROPOUT),
-            nn.Linear(H, H),
+            #nn.Linear(H, H),
             nn.ReLU(),
             nn.Dropout(DROPOUT),
             nn.Linear(H, D_out)
@@ -213,7 +213,7 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
         #               Training
         # =======================================
         # Print the header of the result table
-        print(f"{'Epoch':^7} | {'Batch':^7} | {'Train Loss':^12} | {'Val Loss':^10} | {'Val Acc':^9} | {'Elapsed':^9}")
+        print(f"{'Epoch':^7} | {'Batch':^7} | {'Train Loss':^12} | {'Train Acc':^9} | {'Val Loss':^10} | {'Val Acc':^9} | {'Elapsed':^9}")
         print("-" * 70)
         # Measure the elapsed time of each epoch
         t0_epoch, t0_batch = time.time(), time.time()
@@ -251,10 +251,17 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             if (step % 20 == 0 and step != 0) or (step == len(train_dataloader) - 1):
                 # Calculate time elapsed for 20 batches
                 time_elapsed = time.time() - t0_batch
+                #if evaluation == True:
+                    # After the completion of each training epoch, measure the model's performance
+                    # on our validation set.
+                    #val_loss, val_accuracy = evaluate(model, val_dataloader)
+                    #_, train_accuracy = evaluate(model, train_dataloader)
+                    # Print performance over the entire training data
+                    #time_elapsed = time.time() - t0_epoch
 
                 # Print training results
                 print(
-                    f"{epoch_i + 1:^7} | {step:^7} | {batch_loss / batch_counts:^12.6f} | {'-':^10} | {'-':^9} | {time_elapsed:^9.2f}")
+                    f"{epoch_i + 1:^7} | {step:^7} | {batch_loss / batch_counts:^12.6f} | {'-':^7}  | {'-':^7} | {'-':^7} | {time_elapsed:^9.2f}")
 
                 # Reset batch tracking variables
                 batch_loss, batch_counts = 0, 0
@@ -269,12 +276,12 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             # After the completion of each training epoch, measure the model's performance
             # on our validation set.
             val_loss, val_accuracy = evaluate(model, val_dataloader)
-
+            _, train_accuracy = evaluate(model, train_dataloader)
             # Print performance over the entire training data
             time_elapsed = time.time() - t0_epoch
 
             print(
-                f"{epoch_i + 1:^7} | {'-':^7} | {avg_train_loss:^12.6f} | {val_loss:^10.6f} | {val_accuracy:^9.2f} | {time_elapsed:^9.2f}")
+                f"{epoch_i + 1:^7} | {'-':^7} | {avg_train_loss:^12.6f} | {train_accuracy:^9.2f} | {val_loss:^10.6f} | {val_accuracy:^9.2f} | {time_elapsed:^9.2f}")
             print("-" * 70)
         print("\n")
 
@@ -375,22 +382,10 @@ if __name__=='__main__':
 
 
 
-    bert_classifier = BertClassifier(model)
 
-    bert_classifier.to(device)
-
-    model_load_path = MODEL_SAVE_PATH
-    checkpoint = torch.load(model_load_path, map_location=device)
-
-    bert_classifier.load_state_dict(checkpoint['model_state_dict'])
-
-    optimizer = AdamW(bert_classifier.parameters(), lr=LEARNING_RATE, eps=EPSILON)
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-    # initialize and train the model
-    _, _, scheduler = initialize_model(bert_classifier,epochs=EPOCH)
+    bert_classifier, optimizer, scheduler = initialize_model(model,epochs=EPOCH)
     train(bert_classifier, train_dataloader, dev_dataloader, epochs=EPOCH, evaluation=True)
-
+    pred = bert_predict(bert_classifier, dev_dataloader)
     # Save the model state and optimizer state
     torch.save({
         'model_state_dict': bert_classifier.state_dict(),
