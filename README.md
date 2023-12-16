@@ -6,7 +6,7 @@ This branch contains code for two experiments: prompt-based learning and fine-tu
 ## Instructions
 Firstly, please create a virtual environment with python=3.8 and install all the dependencies.
 
-The code is easy to read and run and all hyperparameters are listed in the front of the code, you can change them while doing the parameter-tuning. 
+The code is easy to read and run and all hyperparameters are listed at the beginning of the code, you can change them while doing the parameter-tuning. 
 
 The ```Prompt``` folder contains the code for prompt-related experiments, while the ```transfer``` folder contains the experiments for fine-tuning+transfer learning. 
 
