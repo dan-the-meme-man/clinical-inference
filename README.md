@@ -1,49 +1,10 @@
-# Clinical Inference
 
-## Table of Contents
+# Prompt-based learning and Fine-tuning LLMs
 
-- [Clinical Inference](#clinical-inference)
-  - [Table of Contents](#table-of-contents)
-  - [Introduction](#introduction)
-  - [How to run](#how-to-run)
+This branch contains code for two experiments: prompt-based learning and fine-tuning LLMs.
 
-## Introduction
+## Instructions
+The code is easy to read and run and all hyperparameters are listed in the front of the code, you can change them while doing the parameter-tuning. 
 
-Our submission to SemEval 2024's Task 2: Safe Biomedical Natural Language Inference for Clinical Trials.
+Note: If you want to use different BERT models for the task, make sure to change the parameter ```D_in```inside the ```Bert_classifier``` class. For example, if you use ```PubMedBert```, ```D_in``` should be set in *768*, while if you use ```Deberta```, you should set it to *1024*.
 
-This task is documented here: <https://sites.google.com/view/nli4ct/semeval-2024?authuser=0>.
-
-## How to run
-
-If you are a Linux user, you should have the ```unzip``` util installed. If you are a Windows user, you should
-have the Windows tool Expand-Archive instead, which is recognized by Powershell. The Python script ```fetch_task.py``` will clone the repository and unzip the data files for you. You should then run ```serialize_cts.py``` to create the serialized data files:
-
-```bash
-python data/fetch_task.py
-python data/serialize_cts.py
-```
-
-Before proceeding, ensure you have the relevant libraries installed:
-  
-```bash
-pip install -r requirements.txt
-```
-
-You can optionally run ```retrieve_data.py``` to ensure the serialization has gone as expected:
-
-```bash
-python data/retrieve_data.py
-```
-
-You can then optionally run the ChatGPT baseline. Ensure you have a valid API key saved to a file
-called "key.txt" in the baseline directory. Then run:
-
-```bash
-python baseline/ask_gpt.py
-```
-
-Finally, you can train our best model from scratch if you wish:
-
-```bash
-python nn/train.py
-```
